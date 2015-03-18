@@ -1,119 +1,115 @@
 <!doctype html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>15745-s15-project by ddcc</title>
+    <title>15745 S15 Project</title>
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script src="javascripts/respond.js"></script>
     <!--[if lt IE 9]>
       <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+      <![endif]-->
     <!--[if lt IE 8]>
     <link rel="stylesheet" href="stylesheets/ie.css">
     <![endif]-->
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+</head>
+<body>
+  <div id="header">
+    <nav>
+      <li class="fork"><a href="https://github.com/ddcc/15745-s15-project">View On GitHub</a></li>
+      <!-- <li class="downloads"><a href="https://github.com/ddcc/15745-s15-project/zipball/master">MILESTONE</a></li> -->
+      <li class="downloads"><a href="docs/15745-s15-project-proposal.pdf">PROPOSAL</a></li>
+      <li class="title">DOWNLOADS</li>
+  </nav>
+</div>
 
-  </head>
-  <body>
-      <div id="header">
-        <nav>
-          <li class="fork"><a href="https://github.com/ddcc/15745-s15-project">View On GitHub</a></li>
-<!--          <li class="downloads"><a href="https://github.com/ddcc/15745-s15-project/zipball/master">MILESTONE</a></li> -->
-          <li class="downloads"><a href="docs/15745-s15-project-proposal.pdf">PROPOSAL</a></li>
-          <li class="title">DOWNLOADS</li>
-        </nav>
-      </div><!-- end header -->
+<div class="wrapper">
+  <section>
+    <div id="title">
+      <h1>15745-s15-project</h1>
+      <p>15-745 Optimizing Compilers S15 Project</p>
+      <hr>
+  </div>
 
-    <div class="wrapper">
+  <h3>
+    <a id="project-group" class="anchor" href="#project-group" aria-hidden="true"><span class="octicon octicon-link"></span></a>Project Group</h3>
 
-      <section>
-        <div id="title">
-          <h1>15745-s15-project</h1>
-          <p>15-745 Optimizing Compilers S15 Project</p>
-          <hr>
+    <p>Tiffany Bao, Dominic Chen, Rijnard van Tonder</p>
+
+    <h3>
+        <a id="project-description" class="anchor" href="#project-description" aria-hidden="true"><span class="octicon octicon-link"></span></a>Description</h3>
+        <div style="text-align:justify;">
+            <p>
+                Although numerous debugging tools have been developed for performing static
+                and dynamic software analysis, a large number of these require access to source
+                code or utilization of special compile-time flags to embed debug information
+                within the output binary. In contrast, little effort has been spent on
+                developing static binary analysis tools which can directly analyze
+                off-the-shelf executables without executing them. For this project, we plan to
+                focus on a subset of common programming bugs that tend to introduce security
+                vulnerabilities, known as memory-safety errors. Examples of these include
+                buffer overflows, double frees, and uninitialized variables. Over the course of
+                the project, we will develop and implement various static memory-safety
+                analyses into our group’s Binary Analysis Platform (BAP). BAP is a pre-existing
+                framework written in OCaml for performing analysis of binary code, and we’ll be
+                using it primarily with the ARM architecture. In order to evaluate our results,
+                we plan to compare the output of our analyses with those produced by current
+                state-of-the-art tools on production binaries taken from various desktop and
+                embedded platforms.
+            </p>
         </div>
 
         <h3>
-<a id="project-group" class="anchor" href="#project-group" aria-hidden="true"><span class="octicon octicon-link"></span></a>Project Group</h3>
+            <a id="project-location" class="anchor" href="#project-location" aria-hidden="true"><span class="octicon octicon-link"></span></a>Project Location</h3>
+            <p>We expect to add build instructions here once appropriate. For now, the project contents can be found at</p>
 
-<p>Tiffany Bao, Dominic Chen, Rijnard van Tonder</p>
+            <pre><code>git clone https://github.com/ddcc/15745-s15-project.git</code></pre>
 
+            <h3>
+                <a id="project-schedule" class="anchor" href="#project-schedule" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running Schedule</h3>
 
-<h3>
-<a id="project-description" class="anchor" href="#project-description" aria-hidden="true"><span class="octicon octicon-link"></span></a>Description</h3>
-<div style="text-align:justify;">
-<p>Although numerous debugging tools have been developed for performing static
-and dynamic software analysis, a large number of these require access to source
-code or utilization of special compile-time flags to embed debug information
-within the output binary. In contrast, little effort has been spent on
-developing static binary analysis tools which can directly analyze
-off-the-shelf executables without executing them. For this project, we plan to
-focus on a subset of common programming bugs that tend to introduce security
-vulnerabilities, known as memory-safety errors. Examples of these include
-buffer overflows, double frees, and uninitialized variables. Over the course of
-the project, we will develop and implement various static memory-safety
-analyses into our group’s Binary Analysis Platform (BAP). BAP is a pre-existing
-framework written in OCaml for performing analysis of binary code, and we’ll be
-using it primarily with the ARM architecture. In order to evaluate our results,
-we plan to compare the output of our analyses with those produced by current
-state-of-the-art tools on production binaries taken from various desktop and
-embedded platforms.</p></div>
+                <table style="width:100%">
+                  <tr>
+                    <th>Week</th>
+                    <th>Goal</th>
+                </tr>
+                <tr>
+                    <td>3/16 - 3/20</td>
+                    <td>Write project proposal</td>
+                </tr>
+                <tr>
+                    <td>3/23 - 3/27</td>
+                    <td>Implement 75% goals</td>
+                </tr>
+                <tr>
+                    <td>3/30 - 4/3</td>
+                    <td>Implement 75% goals</td>
+                </tr>
+                <tr>
+                    <td>4/6 - 4/10</td>
+                    <td>Implement 100% goals</td>
+                </tr>
+                <tr>
+                    <td>4/13 - 4/17</td>
+                    <td>Implement 100% goals</td>
+                </tr>
+                <tr>
+                    <td>4/20 - 4/24</td>
+                    <td>Implement 125% goals</td>
+                </tr>
+                <tr>
+                    <td>4/27 - 4/29</td>
+                    <td>Write final report, prepare for poster session</td>
+                </tr>
 
+            </table>
+        </section>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
-
-<h3>
-<a id="project-location" class="anchor" href="#project-location" aria-hidden="true"><span class="octicon octicon-link"></span></a>Project Location</h3>
-<p>We expect to add build instructions here once appropriate. For now, the project contents can be found at</p>
-
-<pre><code>git checkout http://ddcc.github.io/15745-s15-project
-</code></pre>
-
-<h3>
-<a id="project-schedule" class="anchor" href="#project-schedule" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running Schedule</h3>
-
-<table style="width:100%">
-  <tr>
-    <th>Week</th>
-    <th>Goal</th> 
-  </tr>
-  <tr>
-    <td>3/16 - 3/20</td>
-    <td>Write project proposal</td> 
-  </tr>
-  <tr>
-    <td>3/23 - 3/27</td>
-    <td>Implement 75% goals</td> 
-  </tr>
-  <tr>
-    <td>3/30 - 4/3</td>
-    <td>Implement 75% goals</td> 
-  </tr>
-  <tr>
-    <td>4/6 - 4/10</td>
-    <td>Implement 100% goals</td> 
-  </tr>
-  <tr>
-    <td>4/13 - 4/17</td>
-    <td>Implement 100% goals</td> 
-  </tr>
-  <tr>
-    <td>4/20 - 4/24</td>
-    <td>Implement 125% goals</td> 
-  </tr>
-  <tr>
-    <td>4/27 - 4/29</td>
-    <td>Write final report, prepare for poster session</td> 
-  </tr>
-
-</table>
-    
-<span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
-  </body>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+</body>
 </html>
-
-
-
