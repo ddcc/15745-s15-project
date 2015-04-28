@@ -1,0 +1,156 @@
+\documentclass[letterpaper,11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[hyphens]{url}
+\usepackage{colortbl}
+\usepackage{listings}
+\begin{document}
+
+\date{\today}
+
+\title{\Large \bf Memory Safety Bug Hunting with BAP} 
+
+\author{Tiffany Bao, Dominic Chen, Rijnard van Tonder}
+
+\maketitle
+
+\section{Introduction}
+\label{intro}
+
+\paragraph{The Problem}
+
+Although numerous debugging tools have been developed for performing static and
+dynamic software analysis, the majority of these require access to source
+code or utilization of special compile­time flags to embed debug information
+within the output binary. In contrast, little effort has been spent on
+developing static binary analysis tools which can directly analyze
+off­the­shelf executables without executing them. For this project, we plan to
+focus on a subset of common programming bugs that tend to introduce security
+vulnerabilities, known as memory­safety errors. Examples of these include
+buffer overflows, double frees, and uninitialized variables. In particular, we
+define \emph{Security Outcomes} with respect to certain memory-safety errors,
+and subsequently implement and test static analyses that yield these outcomes.
+All analyses were written against our group's Binary Analysis Platform
+(BAP) \cite{bap, brumley2011bap}.
+
+A factor of this research area that appeals to many is the ability to
+conclude whether vulnerabilities do or do not exist by performing
+an analysis purely on the binary level. Due to the inherent difficulties
+of operating at this level, %we can expand on what these difficulties are...
+our approach to the problem starts out coarse, and continues to be
+incrementally refined as we become more familiar with the numerous
+barriers that inhibit vulnerability detection in binaries. In this respect,
+we have much to say towards lessons learned in \S\ref{lessonslearned}.
+
+\subsection{Approach Overview}
+
+At the outset of this project, we planned to implement and test the static
+analyses with respect to our original proposal:
+
+\begin{enumerate}
+  \item Intraprocedural data dependency resolution of instructions
+  \item Intraprocedural detection of unchecked memory allocations
+  \item Basic intraprocedural detection of buffer overflows in the stack
+  \item Basic intraprocedural detection of buffer overflows in the heap
+\end{enumerate}
+
+Equipped with the knowledge of data flow dependency between instructions (1),
+we determined to reason about various properties of typical vulnerabilities
+that we could check (2-4). For example, we might like to follow how arguments
+to a `strcpy` call are influenced by previous instructions as a function of
+the stack register.
+
+\subsection{Related Work}
+
+Engler et. al. found numerous bugs with system-specific static analyses,
+implemented by way of a meta-compilation language for the \texttt{gcc} compiler
+\cite{dawson,dawson2}. Analyses are composed in the form of correctness rules
+and automatic inference of rules form source code. Memory errors that are
+checked include null pointer bugs, not checking allocation results, and uses of
+freed pointers. This relates to our goal in that we would ideally like to perform
+similar checks, albeit at the level of complexity of binary code. Whereas
+Engler's work matured into a generic platform for specifying analyses, we must
+start first with an ad-hoc approach to gain insight and familiarity in the
+problem domain presented by binaries.
+
+% needs more
+
+\subsection{Contributions}
+
+Our key technical contributions are as follows:
+
+\begin{enumerate}
+  \item A dataflow analysis framework for BAP.
+  \item General plugins for BAP that deliver
+    \begin{enumerate}
+      \item reaching definitions and
+      \item data flow dependency resolution (use-def and def-use chains).
+    \end{enumerate}
+  \item Security-specific plugins for BAP that produce security outcomes by checking
+    \begin{enumerate}
+      \item whether memory allocation checks are performed on `memcpy`,
+      \item whether calls such as strcpy are safe from buffer overflows under
+        specific conditions, and
+      \item whether malloc calls... % dominic?
+    \end{enumerate}
+  \item Results of testing the aforementioned plugins on the \texttt{GNU CoreUtils}
+    software suite.
+\end{enumerate}
+
+\section{Approach}
+
+Our approach toward ensuring security properties.
+
+Initially, we determined to reason about each of the cases above that relate
+to vulnerabilities (2-4). For example, if we identified the following call
+in a binary:
+
+\begin{center}
+\lstset{language=C, label=strcpy,
+caption=strcpy-call, breaklines=true, basicstyle=\tiny, numbers=left}
+\begin{lstlisting}
+strcpy(src,dst)
+\end{lstlisting}
+\end{center}
+
+We would like to 
+Need basic data dependencies.
+
+
+\subsection{Unchecked Memory}
+
+\subsection{Stack-based Security Outcomes}
+
+% heap-based? or malloc?
+\subsection{Malloc-based Security Outcomes}
+
+
+
+
+
+
+\section{Experimental Setup}
+
+\subsection{}
+
+
+\section{Experimental Evaluation}
+
+
+
+\section{Surprises and Lessons Learned}
+\label{lessonslearned}
+
+
+
+\section{Conclusions and Future Work}
+
+
+
+\clearpage
+\section{Related Work}
+
+\nocite{*}
+{\bibliographystyle{acm}
+\bibliography{b1}}
+
+\end{document}
