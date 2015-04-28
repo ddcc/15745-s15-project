@@ -235,20 +235,54 @@ when considering \texttt{dst}. A full listing of the BIL disassembly,
 as well as the data dependencies for \texttt{argv[1]} may be viewed in
 the Appendix~\ref{appa}
 
+% TODO insert graphviz graphic
+
 \subsection{Malloc Checking Security Outcomes}
 % for tiffany
 
 \subsection{Stack-based Security Outcomes}
+\label{stackoutcomes}
+
+\paragraph{}
+A number of unfruitful approaches documented in~\S\ref{lessonslearned} lead us
+to opting for an approach where we identify two properties which are important
+from a security perspective, without inferring sizes of stack-based buffers.
+
+\paragraph{\texttt{src} is a constant}
+If we can determine that the \texttt{src} buffer is a constant, (and therefore
+not dependent on any user input), the \texttt{strcpy} call is safe. While a
+good property to check, it was found that a constant value corresponding
+to the \texttt{src} argument never occured. With O0 and O1 optimizations,
+these are not there (ida output)
+
+\paragraph{\texttt{src} is dependent on .ro address} 
+Example only, not found in coreutils
+
+\paragraph{\texttt{dst} is on the stack}
+Namely, we first infer the stack size of a given function from the disassembly
+of the function prologue. This may be denoted 
+
+Needs more reasoning with respect to the stack size of a function
+
+Rules out some possiblities. Requires continued refinement.
+
+undecidability of ptr analysis. 
+
 
 % heap-based? or malloc?
 \subsection{Malloc-based Security Outcomes}
 % for dominic
 
 
-
-
-
 \section{Experimental Setup}
+
+CoreUtils used.
+
+
+\subsection{Unchecked Malloc}
+\subsection{Stack}
+\subsection{Malloc}
+
 
 
 \section{Experimental Evaluation}
@@ -258,10 +292,27 @@ the Appendix~\ref{appa}
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
 
+\subsection{Reasoning about buffer overflows}
+\paragraph{}
+
+
+An initial approach toward ensuring stack buffer overflow detection was to
+attempt to reason about sizes of buffers which are used by "Potentially
+Dangerous Functions"~\cite{seacord2008cert} such as \texttt{strcpy}. This
+turned out to be an unfruitful approach. For one, due to time constraints and
+complexity, we opted for an approach that does not require pointer analysis. 
+
+Therefore, rather that attempting to infer and compare the sizes of buffers,...
+
+For example, data dependency instructions numbering in the hundreds.
+
+Compiler optimizations (big one): \_\_stck\_check, sprintf, etc
 
 
 \section{Conclusions and Future Work}
 
+Just as valuable to find out what works as what doesn't... that really
+is a meaningful contribution.
 
 
 \clearpage
