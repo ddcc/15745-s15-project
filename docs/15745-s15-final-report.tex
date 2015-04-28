@@ -189,16 +189,48 @@ reaching-definitions pass. From the reaching definitions, we generate def-use
 and use-def chains as necessary---e.g., we filter on those reaching definitions
 which concern a particular use or def of a register.
 
+\subsection{Data Flow Dependency}
 
-\subsection{Unchecked Malloc and the Case for Reaching Definitions}
+An extension to the def-use and use-def chains was to produce the data (flow)
+dependencies of a given statement in a forward or backward direction,
+respectively. Essentially, given a register in a definition (such as a Move
+instruction in the BIL IR), we can produce a set of all instructions that are
+determined to transitively affect its value. We implement this
+by way of a data dependency plugin for BAP. Consider the arguments to the
+following \texttt{strcpy} call:
 
+\begin{center}
+\lstset{language=C, label=strcpy,
+caption=strcpy.c, breaklines=true, basicstyle=\tiny, numbers=none}
+\begin{lstlisting}
+#include <stdio.h>
+#include <string.h>
 
-Our approach toward ensuring security properties.
+int main(int argc, char** argv) {
+  char dst[10] = {0};
+  strcpy(dst, argv[1]);
+}
+\end{lstlisting}
+\end{center}
 
+For the \texttt{dst} variable on the stack, encoded as an
+\texttt{<address,statement>} pair, we have:
 
+\begin{verbatim}
+    <(0x8490:32, 0)> R0 := R2 
+\end{verbatim}
 
-We would like to 
-Need basic data dependencies.
+The plugin will determine all preceding instructions it is dependent on:
+\begin{verbatim}
+    <(0x8444:32, 3)> SP := SP - 0x8:32
+    <(0x8448:32, 2)> R11 := SP + 0x4:32
+    <(0x848C:32, 2)> R2 := R11 - 0x10:32
+\end{verbatim}
+
+Now, we can observe the role that the stack pointer \texttt{SP} plays
+when considering \texttt{dst}. A full listing of the BIL disassembly,
+as well as the data dependencies for \texttt{argv[1]} may be viewed in
+the Appendix~\ref{appa}
 
 
 \subsection{Unchecked Memory}
@@ -207,11 +239,6 @@ Need basic data dependencies.
 
 % heap-based? or malloc?
 \subsection{Malloc-based Security Outcomes}
-
-
-
-
-
 
 \section{Experimental Setup}
 
@@ -233,6 +260,83 @@ Need basic data dependencies.
 
 \clearpage
 \section{Related Work}
+
+
+\appendix
+\section{Appendix}
+\label{appa}
+\paragraph{BIL Dissasembly of Listing \ref{strcpy}}
+
+\begin{verbatim}
+  SP := SP - 0x8:32
+  mem := mem         with [base_436 + 0xFFFFFFF8:32, el]:u32 <- R11
+  mem := mem         with [base_436 + 0xFFFFFFFC:32, el]:u32 <- LR
+  base_436 := SP
+  R11 := SP + 0x4:32
+  t_439 := 0x4:32
+  s_438 := SP
+  SP := SP - 0x18:32
+  t_442 := 0x18:32
+  s_441 := SP
+  mem := mem         with [R11 + 0xFFFFFFE8:32, el]:u32 <- R0
+  mem := mem         with [R11 + 0xFFFFFFE4:32, el]:u32 <- R1
+  R3 := R11 - 0x10:32
+  t_447 := 0x10:32
+  s_446 := R11
+  R2 := 0x0:32
+  mem := mem         with [R3 + 0x0:32, el]:u32 <- R2
+  R3 := R3 + 0x4:32
+  t_452 := 0x4:32
+  s_451 := R3
+  R2 := 0x0:32
+  mem := mem         with [R3 + 0x0:32, el]:u32 <- R2
+  R3 := R3 + 0x4:32
+  t_457 := 0x4:32
+  s_456 := R3
+  R2 := 0x0:32
+  mem := mem         with [R3 + 0x0:32, el]:u16 <- t_460
+  t_460 := low:16[R2]
+  R3 := R3 + 0x2:32
+  t_463 := 0x2:32
+  s_462 := R3
+  R3 := mem[R11 + 0xFFFFFFE4:32, el]:u32
+  R3 := R3 + 0x4:32
+  t_467 := 0x4:32
+  s_466 := R3
+  R3 := mem[R3 + 0x0:32, el]:u32
+  R2 := R11 - 0x10:32
+  t_471 := 0x10:32
+  s_470 := R11
+  R0 := R2
+  R1 := R3
+  jmp 0x82E0:32
+  LR := 0x849C:32
+\end{verbatim}
+
+\paragraph{BIL data dependency instructions for \texttt{argv[1]}}
+
+\begin{verbatim}
+  <(0x8444:32, 0)> base_436 := SP
+  <(0x8444:32, 1)> mem := mem         with [base_436 + 0xFFFFFFFC:32, el]:u32 <- LR
+  <(0x8444:32, 2)> mem := mem         with [base_436 + 0xFFFFFFF8:32, el]:u32 <- R11
+  <(0x8444:32, 3)> SP := SP - 0x8:32
+  <(0x8448:32, 2)> R11 := SP + 0x4:32
+  <(0x8450:32, 0)> mem := mem         with [R11 + 0xFFFFFFE8:32, el]:u32 <- R0
+  <(0x8454:32, 0)> mem := mem         with [R11 + 0xFFFFFFE4:32, el]:u32 <- R1
+  <(0x8458:32, 2)> R3 := R11 - 0x10:32
+  <(0x845C:32, 0)> R2 := 0x0:32
+  <(0x8460:32, 0)> mem := mem         with [R3 + 0x0:32, el]:u32 <- R2
+  <(0x8464:32, 2)> R3 := R3 + 0x4:32
+  <(0x8468:32, 0)> R2 := 0x0:32
+  <(0x846C:32, 0)> mem := mem         with [R3 + 0x0:32, el]:u32 <- R2
+  <(0x8470:32, 2)> R3 := R3 + 0x4:32
+  <(0x8474:32, 0)> R2 := 0x0:32
+  <(0x8478:32, 0)> t_460 := low:16[R2]
+  <(0x8478:32, 1)> mem := mem         with [R3 + 0x0:32, el]:u16 <- t_460
+  <(0x8480:32, 0)> R3 := mem[R11 + 0xFFFFFFE4:32, el]:u32
+  <(0x8484:32, 2)> R3 := R3 + 0x4:32
+  <(0x8488:32, 0)> R3 := mem[R3 + 0x0:32, el]:u32
+\end{verbatim}
 
 \nocite{*}
 {\bibliographystyle{acm}
