@@ -106,13 +106,16 @@ Our key technical contributions are as follows:
 
 \section{Approach}
 
+\subsection{Overview}
 \paragraph{}
 Here we discuss our approach toward ensuring security properties as it evolved
 over the course of the project. Initially, we determined to reason about each
 of the cases in \S\ref{approachoverview} that relate to vulnerabilities
-(2-4). 
+(2-4). To do so, we needed some basic infrastructure (1) which we describe
+first. Thereafter, we describe our specific approaches to performing
+security analyses with respect to specific \emph{Security Outcomes}.
 
-\subsection{Unchecked Malloc and the Case for Reaching Definitions}
+\subsection{The Case for Reaching Definitions}
 
 \paragraph{}
 For example, consider the following code, where we desire to verify
@@ -150,16 +153,16 @@ before and after the call):
 \lstset{language=C, label=mallocdisasm,
 caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
 \begin{lstlisting}
-  begin(main\_ENTRY) 
+  begin(main_ENTRY) 
       000082c8: 04 e0 2d e5    str lr, [sp, #-4]! 
       000082cc: 20 00 a0 e3    mov r0, #0x20       
       000082d0: 49 00 00 eb    bl #0x124           ; call malloc
-  end(main\_ENTRY)
+  end(main_ENTRY)
  
-  begin(main\_0xc) 
+  begin(main_0xc) 
       000082d4: 00 00 50 e3    cmp r0, #0x0        ; check malloc return value
       000082d8: 02 00 00 0a    beq #0x8            
-  end(main\_0xc)
+  end(main_0xc)
 \end{lstlisting}
 \end{center}
 
@@ -232,17 +235,20 @@ when considering \texttt{dst}. A full listing of the BIL disassembly,
 as well as the data dependencies for \texttt{argv[1]} may be viewed in
 the Appendix~\ref{appa}
 
-
-\subsection{Unchecked Memory}
+\subsection{Malloc Checking Security Outcomes}
+% for tiffany
 
 \subsection{Stack-based Security Outcomes}
 
 % heap-based? or malloc?
 \subsection{Malloc-based Security Outcomes}
+% for dominic
+
+
+
+
 
 \section{Experimental Setup}
-
-\subsection{}
 
 
 \section{Experimental Evaluation}
