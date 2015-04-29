@@ -1,0 +1,61 @@
+For Malloc checking, we suppose that a security program should always check the
+return value of \texttt{malloc}. This is a strong yet reasonable requirement for
+security coding, because if the point is failed to be assigned and the space for
+the pointer is failed to be allocated, attack may use this failed pointer to
+exploit the program.
+
+To demonstrate how our work runs, we use the example shown in \ref{fig:malloc}.
+In this example, function \texttt{malloc} is called at address \texttt{0x82d0}.
+Followed by the instruction, we have a comparison instruction which compare the
+return value \texttt{r0} to constant value \texttt{0}. This piece of code is
+thus a security one for \texttt{malloc} checking.
+
+Note that the comparison instruction is not necessarily to be immediately after
+the malloc call instruction. Also, a more complicated case could be that, the
+return value is passed to other register and then the other register is checked
+instead of `r0`.
+
+Another example that we come across is from binary coreutils\_O1\_[, which is
+shown as following:
+
+\begin{center}
+\lstset{language=C,
+caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
+\begin{lstlisting}
+    d4d0:       e0800009        add     r0, r0, r9
+    d4d4:       e280a002        add     sl, r0, 2
+    d4d8:       e2800003        add     r0, r0, 3
+    d4dc:       ebffee80        bl      8ee4 <malloc@plt>             *
+    d4e0:       e1a08000        mov     r8, r0                        *
+    d4e4:       ea000006        b       d504 <locale_charset+0x208>
+    d4e8:       e0891000        add     r1, r9, r0
+    d4ec:       e081100a        add     r1, r1, sl
+    d4f0:       e281a002        add     sl, r1, 2
+    d4f4:       e1a00004        mov     r0, r4
+    d4f8:       e2811003        add     r1, r1, 3
+    d4fc:       ebffee4b        bl      8e30 <realloc@plt>
+    d500:       e1a08000        mov     r8, r0
+    d504:       e3580000        cmp     r8, 0                        *
+    d508:       1a000005        bne     d524 <locale_charset+0x228>   *
+    d50c:       e1a00004        mov     r0, r4
+\end{lstlisting}
+\end{center}
+In this example, after calling malloc at address d4dc, the program copies the
+return value to register r8, and then just tp address d504 where it compares the
+value of r8 to constant 0. The reason of compiling the program in such way is
+mainly because of optimization. In specifically, this helps decreasing the
+redundant code, by reusing \texttt{d504: cmp r8, 0} and the following instructions.
+
+To addres this problem, we use the forward-data-deps plugin to help finding the
+instructions that depends on the return value. Here dependence means that one or
+more variables used in the instruction depends on register r0. For example,
+given instruction \texttt{d4e0: mov r8, r0}, we find that instruction d504: cmp r8, 0
+depends on r0, because the value of r8 is from r0. Also, instruction d508
+depends on r0, because the flag registers are determined by the d504, and in
+d504 r8 depends on r0.
+
+Now back to the example, using forward-data-deps plugin, we get all dependence
+instructions once we find a move instruction with r0 as source. For the next
+step, we check if there is cmp instruction among all instructions we found. If
+there is one, we consider the call is safe. If not, we consider the call is
+unsafe.
