@@ -514,12 +514,6 @@ check; see \S\ref{lessonslearned} for further discussion.
 
 \subsection{Malloc Check Plugin}
 \paragraph{}
-For evaluation of the heap check plugin, we executed the plugin on each
-executable from the \texttt{coreutils} suite of system programs. This is composed of
-103 binaries, such as \texttt{cat}, \texttt{wc}, \texttt{who}, etc. Additionally, we compiled four
-separate versions of each plugin with different optimization levels; one at
-\texttt{O0}, one at \texttt{O1}, one at \texttt{O2}, and one at \texttt{O3}.
-
 \paragraph{}
 Of this output, our plugin identified a total of 4303 calls to preidentified
 memory allocation functions, namely ``xmalloc'', ``malloc'', ``xrealloc'',
@@ -646,7 +640,14 @@ rerun the plugin. For example, we may be able to couple this data with
 pointer-analysis, and infer stack boundaries.
 
 \subsection{Malloc Plugin}
-% dominic TODO
+\paragraph{}
+For evaluation of the heap check plugin, we executed the plugin on each
+executable from the \texttt{coreutils} suite of system programs. This is
+composed of 103 binaries, such as \texttt{cat}, \texttt{wc}, \texttt{who}, etc.
+Additionally, we compiled four separate versions of each plugin with different
+optimization levels; one at \texttt{O0}, one at \texttt{O1}, one at
+\texttt{O2}, and one at \texttt{O3}.
+
 
 
 % =====================================================================
@@ -655,6 +656,29 @@ pointer-analysis, and infer stack boundaries.
 %TODO tiffany, dominic
 
 There were a number of surprises and lessons learned throughout this project.
+
+\subsection{Development Hurdles}
+
+\paragraph{}
+One of the common problems that we encountered while developing our analysis
+plugins was a lack of preexisting compiler analysis in the BAP framework. In
+particular, since we are performing our analysis at both the assembly and BIL
+level, common compiler simplifications like Static Single Assignment (SSA) are
+not available, requiring manual implementation of def-use and use-def chains
+using the dataflow framework to resolve. Likewise, BAP does not include any
+built-in constant propagation or constant folding passes, requiring manual
+pattern-matching on arithmetic instructions in an attempt to resolve register
+operations to constant values. Furthermore, BAP does not have any built-in
+pointer analysis capabilities, and due to time constraints, we did not track
+values passed in and out of memory for our analysis.
+
+\paragraph{}
+Likewise, due to the rapid development of the BAP framework, we also
+encountered problems in which certain APIs that our plugin utilizes were
+renamed or modified in the `master` branch of the BAP repository. This
+essentially presented a trade-off between spending additional development
+effort to revise existing code, and updating to newer version of the BAP
+framework to obtain newer features and fix existing bugs.
 
 \subsection{Reasoning about buffer overflows}
 
@@ -680,6 +704,27 @@ binaries. It was also the case that this result was exhibited inside large
 functions. When testing the plugin on small examples initially, the number of
 statements rarely numbered more than 20. As mentioned previously, we speculate
 that this will affect
+
+\subsection{Reasoning about heap memory}
+
+\paragraph{}
+As mentioned in the discussion of our results, it became apparent that the
+number of resolved memory allocations could be significantly improved with
+moderate additional development effort. Among these would be incorporating a
+more comprehensive constant propagation analysis for resolving memory
+allocation sizes, as the current heap check plugin only looks for constant
+additive offsets to the base allocation site; as mentioned previously it is
+currently incapable of identifying other common arithmetic operations such as
+left shifts (multiplication), etc. Likewise, including better tracking of
+values from one register to another would likely allow for more memory
+allocation sizes to be resolvable into either a constant or a value produced by
+a memory operation, which is currently unhandled.
+
+\paragraph{}
+Basic memory tracking would likely also improve our results significantly, at
+least for the O0 binaries, as we have discovered that the compiler may
+occasionally produce a back-to-back memory store followed by a memory load from
+the same address. This is currently considered unresolvable.
 
 \subsection{General Things Learned}
 
@@ -720,25 +765,6 @@ variables; e.g. usage of variables with unassigned values
   against similar bug checking tools, e.g. Address Sanitizer, Valgrind
   MemCheck, Clang Static Analyzer, Coverity, CodeSonar, etc.
 \end{itemize}
-
-\paragraph{}
-As mentioned in the discussion of our results, it is likely that the number of
-resolved memory allocations could be significantly improved with moderate
-additional development effort. Among these would be incorporating a more
-comprehensive constant propagation analysis for resolving memory allocation
-sizes, as the current heap check plugin only looks for constant additive
-offsets to the base allocation site; as mentioned previously it is currently
-incapable of identifying other common arithmetic operations such as left shifts
-(multiplication), etc. Likewise, including better tracking of values from one
-register to another would likely allow for more memory allocation sizes to be
-resolvable into either a constant or a value produced by a memory operation,
-which is currently unhandled.
-
-\paragraph{}
-Basic memory tracking would likely also improve our results significantly, at
-least for the O0 binaries, as we have discovered that the compiler may
-occasionally produce a back-to-back memory store followed by a memory load from
-the same address. This is currently considered unresolvable.
 
 \paragraph{}
 From a more general perspective, the scope of our analyses could be improved by
