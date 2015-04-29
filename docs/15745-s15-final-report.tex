@@ -412,15 +412,8 @@ Thus, we have the ability to store the output of our analysis without having to
 rerun the plugin. For example, we may be able to couple this data with
 pointer-analysis, and infer stack boundaries.
 
-
-\paragraph{Observations}
-
-\paragraph{Overall effectiveness}
-
-
 \subsection{Malloc Plugin}
 % dominic TODO
-
 
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
@@ -428,54 +421,45 @@ pointer-analysis, and infer stack boundaries.
 
 \subsection{Reasoning about buffer overflows}
 \paragraph{}
-% TODO urgent rijnard
 
-refinement as optimization
+An initial approach towards ensuring stack buffer overflow detection was to
+attempt to reason about sizes of buffers which are passed to ``Potentially
+Dangerous Functions''~\cite{seacord2008cert} such as \texttt{strcpy}. This
+turned out to be an unfruitful approach for the scope of the project, since one
+would have to invariably have to reason about memory accesses.
 
-Mention why it's difficult: libxkbfile.so.1.0.2
+A concrete example that illustrates the difficulty of performing checks on
+\texttt{strcpy} was found when we considered \texttt{libxkbfile.so.1.0.2}.
+Initially we thought that this is a candidate we could perform our check on,
+due to containing a \texttt{strcpy(buf,"none")} call. However, this was found
+to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
+principally highlights the difficulty in choosing candidates for testing.
 
-challenging task... forumalting and putting into practice, concrete
+\subsection{General Things Learned}
 
-An initial approach toward ensuring stack buffer overflow detection was to
-attempt to reason about sizes of buffers which are used by "Potentially
-Dangerous Functions"~\cite{seacord2008cert} such as \texttt{strcpy}. This
-turned out to be an unfruitful approach. For one, due to time constraints and
-complexity, we opted for an approach that does not require pointer analysis. 
+In general, this project made clear the difficulty of tackling binary
+problems.
 
-Therefore, rather that attempting to infer and compare the sizes of buffers,...
-
-For example, data dependency instructions numbering in the hundreds.
-
-
-Rules out some possiblities. Requires continued refinement.
-
-undecidability of ptr analysis. 
-
-
-Not strictly optimization, it is a refining of an analysis.
-
-limitations highlight areas of refinement, not bad.
-
-Deductive on what we need, towards an outcome (approach seems tow ork,
-with respect to an outcome!)
-
-How did we respond
-
-results were not surprising.
-but promising...
-what did you learn from this experience in general?
-
-
+We learned that it is more effective in our research to develop our approaches
+with respect to security outcomes. By doing so, we incrementally identify the
+requirements for producing desired security outcomes (e.g., reaching
+definitions, use-def). It also seems to be a pattern that more sophisticated
+analyses are built on top of simpler analyses (like those produced in this
+project), rather than sophisticated analysis being stand-alone. This follows
+because we require more fundamental information before reasoning about
+further complexities.
 
 \section{Conclusions and Future Work}
+
 
 Just as valuable to find out what works as what doesn't... that really
 is a meaningful contribution. Further applications: nevernote, fgets, coverity?
 
+Influence of statements...
+
 \section{Distribution of Total Credit}
 
 \clearpage
-
 
 \appendix
 \section{Appendix}
