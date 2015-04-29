@@ -722,6 +722,37 @@ variables; e.g. usage of variables with unassigned values
 \end{itemize}
 
 \paragraph{}
+As mentioned in the discussion of our results, it is likely that the number of
+resolved memory allocations could be significantly improved with moderate
+additional development effort. Among these would be incorporating a more
+comprehensive constant propagation analysis for resolving memory allocation
+sizes, as the current heap check plugin only looks for constant additive
+offsets to the base allocation site; as mentioned previously it is currently
+incapable of identifying other common arithmetic operations such as left shifts
+(multiplication), etc. Likewise, including better tracking of values from one
+register to another would likely allow for more memory allocation sizes to be
+resolvable into either a constant or a value produced by a memory operation,
+which is currently unhandled.
+
+\paragraph{}
+Basic memory tracking would likely also improve our results significantly, at
+least for the O0 binaries, as we have discovered that the compiler may
+occasionally produce a back-to-back memory store followed by a memory load from
+the same address. This is currently considered unresolvable.
+
+\paragraph{}
+From a more general perspective, the scope of our analyses could be improved by
+implementing basic support for pointer analysis, interprocedural analysis, and
+field-sensitive analysis. For example, a large number of the heap allocations
+that are currently resolvable to be a fixed-sized constant are likely being
+produced by dynamic memory allocations of custom-defined struct’s. For these
+data structures, better granularity would be obtained by performing memory
+operation safety analysis not only for the entire allocation, but also for
+individual fields within the allocation. This would likely require pointer
+analysis plus additional infrastructure to keep track of offsets within the
+struct that are commonly accessed.
+
+\paragraph{}
 It has been a promising exercise to prototype and test our
 analyses within the context of this project. We consider the experience and
 insights gained throughout to be particularly valuable for performing continued
