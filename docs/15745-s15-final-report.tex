@@ -22,12 +22,12 @@
 \paragraph{}
 Although numerous debugging tools have been developed for performing static and
 dynamic software analysis, the majority of these require access to source
-code or utilization of special compile­time flags to embed debug information
+code or utilization of special compile­-time flags to embed debug information
 within the output binary. In contrast, little effort has been spent on
 developing static binary analysis tools which can directly analyze
-off­the­shelf executables without executing them. For this project, we plan to
+off­-the-­shelf executables without executing them. For this project, we plan to
 focus on a subset of common programming bugs that tend to introduce security
-vulnerabilities, known as memory­safety errors. Examples of these include
+vulnerabilities, known as memory­ safety errors. Examples of these include
 buffer overflows, double frees, and uninitialized variables. In particular, we
 define \emph{Security Outcomes} with respect to certain memory-safety errors,
 and subsequently implement and test static analyses that yield these outcomes.
@@ -474,7 +474,7 @@ due to containing a \texttt{strcpy(buf,"none")}~\cite{xorg} call. However, this 
 to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
 principally highlights the difficulty in choosing candidates for testing.
 
-\paragraph{} 
+\paragraph{}
 One surprising result was the great number of statements (over
 200) that some argument sites were found to depend on in \texttt{Coreutils}
 binaries. It was also the case that this result was exhibited inside large
@@ -506,15 +506,15 @@ further complexities.
 \paragraph{}
 We will focus specifically on refining the sophistication of our analyses
 to handle broader cases as outlined in our discussions. A major benefit of
-identifying the limitations in our approch and evaluation is that it
-immediately highlights areas of refinement. 
+identifying the limitations in our approach and evaluation is that it
+immediately highlights areas of refinement.
 
-\paragraph{} 
+\paragraph{}
 It has been a promising exercise to prototype and test our
 analyses within the context of this project. We consider the experience and
 insights gained throughout to be particularly valuable for performing continued
 research in our group. The additional goals beyond 100\% in our original
-proposal are all candidates for forumulating future analyses.
+proposal are all candidates for formulating future analyses.
 
 
 % =====================================================================
