@@ -246,10 +246,8 @@ the data dependencies for \texttt{argv[1]}, and a graphical
 output may be viewed in
 the Appendix~\ref{appa}.
 
-% TODO insert graphviz graphic
-
 \subsection{Malloc Checking Security Outcomes}
-% for tiffany
+% tiffany TODO
 
 \subsection{Stack-based Security Outcomes}
 \label{stackoutcomes}
@@ -284,16 +282,22 @@ SP in the function prologue. While we didn't observe any cases where the
 stack range was exceeded, this type of check forms the basis for further,
 more sophisticated improvements.
 
-% heap-based? or malloc?
 \subsection{Malloc-based Security Outcomes}
-% for dominic
+% dominic TODO
 
+
+
+
+% ===============================================
 \section{Experimental Setup}
 
-Experimental setup consisted of running our plugins with BAP \texttt{0.9.6}
-\cite{bap} on a set of binaries. 
+Our experimental setup consisted of running our plugins with BAP \texttt{0.9.6}
+\cite{bap} on a set of binaries, including GNU \texttt{Coreutils} and our
+own examples.
 
 \subsection{Unchecked Malloc}
+% tiffany TODO
+
 \subsection{Stack Check Plugin}
 
 The stack check plugin was tested against the GNU \texttt{Coreutils} suite. We
@@ -350,16 +354,19 @@ use of the \texttt{Coreutils} suite. At the same time, it is difficult to
 choose a test suite which purposefully exhibits the stack properties that we check;
 see \S\ref{lessonslearned} for further discussion.
 
-
-
 \subsection{Malloc}
+% dominic todo
 
 
+% ======================================================================
 \section{Experimental Evaluation}
 
 We were pleased with our ability to rise to the challenge of...
 
 However.
+
+\subsection{Malloc Check Plugin} 
+% tiffany TODO
 
 
 \subsection{Stack Check Plugin}
@@ -385,9 +392,13 @@ results were not surprising.
 but promising...
 what did you learn from this experience in general?
 
+\subsection{Malloc Plugin}
+% dominic TODO
+
 
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
+%TODO tiffany, dominic
 
 \subsection{Reasoning about buffer overflows}
 \paragraph{}
@@ -418,9 +429,9 @@ undecidability of ptr analysis.
 Just as valuable to find out what works as what doesn't... that really
 is a meaningful contribution. Further applications: nevernote, fgets, coverity?
 
+\section{Distribution of Total Credit}
 
 \clearpage
-\section{Related Work}
 
 
 \appendix
