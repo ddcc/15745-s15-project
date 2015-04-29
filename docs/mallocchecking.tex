@@ -1,9 +1,11 @@
+\paragraph{}
 For Malloc checking, we suppose that a security program should always check the
 return value of \texttt{malloc}. This is a strong yet reasonable requirement
 for ensuring secure code, because if the pointer fails to be assigned a value
 due to a lack of space for allocation, an attacker may be able to
 exploit a NULL pointer dereference at a later point in the program.
 
+\paragraph{}
 To demonstrate how our plugin check works, observe the example shown in
 \ref{fig:malloc}. In this example, the function \texttt{malloc} is called at
 address \texttt{0x82d0}. Followed by the instruction, we have a comparison
@@ -11,13 +13,15 @@ instruction which compare the return value \texttt{r0} to constant value
 \texttt{0}. This piece of code is thus a candidate for \texttt{malloc}
 checking.
 
+\paragraph{}
 Note that the comparison instruction is not necessarily available immediately after
 the malloc call instruction. Also, a more complicated case could be that the
 return value is passed to another register which in turn is checked
 instead of \texttt{r0}.
 
+\paragraph{}
 Another example that we came across is from binary coreutils\_O1\_[, which is
-shown as following:
+shown below:
 
 \begin{center}
 \lstset{language=C,
@@ -26,8 +30,8 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
     d4d0:       e0800009        add     r0, r0, r9
     d4d4:       e280a002        add     sl, r0, 2
     d4d8:       e2800003        add     r0, r0, 3
-    d4dc:       ebffee80        bl      8ee4 <malloc@plt>             *
-    d4e0:       e1a08000        mov     r8, r0                        *
+    d4dc:       ebffee80        bl      8ee4 <malloc@plt>             \;
+    d4e0:       e1a08000        mov     r8, r0                        \*
     d4e4:       ea000006        b       d504 <locale_charset+0x208>
     d4e8:       e0891000        add     r1, r9, r0
     d4ec:       e081100a        add     r1, r1, sl
@@ -36,11 +40,13 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
     d4f8:       e2811003        add     r1, r1, 3
     d4fc:       ebffee4b        bl      8e30 <realloc@plt>
     d500:       e1a08000        mov     r8, r0
-    d504:       e3580000        cmp     r8, 0                        *
-    d508:       1a000005        bne     d524 <locale_charset+0x228>   *
+    d504:       e3580000        cmp     r8, 0                         \;
+    d508:       1a000005        bne     d524 <locale_charset+0x228>   \;
     d50c:       e1a00004        mov     r0, r4
 \end{lstlisting}
 \end{center}
+
+\paragraph{}
 In this example, after calling malloc at address d4dc, the program copies the
 return value to register \texttt{r8}, and then to address \texttt{d504} where
 it compares the value of \texttt{r8} to constant 0. The reason of compiling the
@@ -48,6 +54,7 @@ program in such way is mainly because of optimization. Specifically, this
 helps decreasing the redundant code, by reusing \texttt{d504: cmp r8, 0} and
 the subsequent instructions.
 
+\paragraph{}
 To address this problem, we use the forward-data-deps plugin to help finding the
 instructions that depends on the return value. Here dependence means that one or
 more variables used in the instruction depends on register \texttt{r0}. For
@@ -57,6 +64,7 @@ example, given instruction \texttt{d4e0: mov r8, r0}, we find that instruction
 the flag registers are determined by
 the \texttt{d504}, and in \texttt{d504 r8} depends on \texttt{r0}.
 
+\paragraph{}
 Looking back to the example, and using forward-data-deps plugin, we get all
 dependence instructions once we find a move instruction with \texttt{r0} as
 source. For In the next step, we check if there is \texttt{cmp} instruction
