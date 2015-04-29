@@ -436,7 +436,7 @@ would have to invariably have to reason about memory accesses.
 A concrete example that illustrates the difficulty of performing checks on
 \texttt{strcpy} was found when we considered \texttt{libxkbfile.so.1.0.2}.
 Initially we thought that this is a candidate we could perform our check on,
-due to containing a \texttt{strcpy(buf,"none")} call. However, this was found
+due to containing a \texttt{strcpy(buf,"none")}~\cite{xorg} call. However, this was found
 to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
 principally highlights the difficulty in choosing candidates for testing.
 
