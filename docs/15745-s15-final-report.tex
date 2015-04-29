@@ -79,7 +79,12 @@ Engler's work matured into a generic platform for specifying analyses, we must
 start first with an ad-hoc approach to gain insight and familiarity in the
 problem domain presented by binaries.
 
-% needs more, TODO tiffany, dominic?
+The Jakstab framework~\cite{kinder2008jakstab} provides a platform for
+analyzying binaries. However, it is not oriented toward detecting security
+vulnerabilities, but rather recovering abstractions from binaries (e.g.,
+CFG reconstruction). Frama-c is an example of a framework which
+allows one to check various properties, including security properties,
+but works on the source level~\cite{cuoq2012frama}.
 
 \subsection{Contributions}
 
@@ -199,7 +204,10 @@ This example demonstrates the need for def-use chains; our stack and heap based
 analyses in turn also require use-def chains. Due to retreating edges in the
 CFG, it is difficult to produce def-use chains given a single instruction. For
 this reason we first implemented a dataflow framework and a
-reaching-definitions pass. From the reaching definitions, we generate def-use
+reaching-definitions pass. An exhaustive description of the
+implementation details for this framework, as implemented in OCaml for
+BAP, may be viewed in Appendix~\ref{appa1}.
+From the reaching definitions, we generate def-use
 and use-def chains as necessary---e.g., we filter on those reaching definitions
 which concern a particular use or def of a register.
 
@@ -247,7 +255,7 @@ Now, we can observe the role that the stack pointer \texttt{SP} plays
 when considering \texttt{dst}. A full listing of the BIL disassembly,
 the data dependencies for \texttt{argv[1]}, and a graphical
 output may be viewed in
-the Appendix~\ref{appa}.
+the Appendix~\ref{appa2}.
 
 \subsection{Malloc Checking Security Outcomes}
 \input{mallocchecking}
@@ -473,15 +481,26 @@ further complexities.
 We will focus specifically on refining the sophistication of our analyses
 to handle broader cases as outlined in our discussions. A major benefit of
 identifying the limitations in our approch and evaluation is that it
-immediately highlights areas of refinement. 
+immediately highlights areas of refinement. The additional goals beyond 100\%
+in our original proposal are all candidates for formulating future analyses.
+In summary, these are:
+
+\begin{itemize}
+  \item Implement intraprocedural detection of null pointer dereferences
+  \item  Implement detection of dynamic memory errors; e.g. dangling pointers,
+double frees, and invalid frees
+\item Implement intraprocedural detection of variables with uninitialized
+variables; e.g. usage of variables with unassigned values
+\item Evaluate soundness, completeness, and performance of our tool
+  against similar bug checking tools, e.g. Address Sanitizer, Valgrind
+  MemCheck, Clang Static Analyzer, Coverity, CodeSonar, etc.
+\end{itemize}
 
 \paragraph{} 
 It has been a promising exercise to prototype and test our
 analyses within the context of this project. We consider the experience and
 insights gained throughout to be particularly valuable for performing continued
-research in our group. The additional goals beyond 100\% in our original
-proposal are all candidates for forumulating future analyses.
-
+research in our group. 
 
 % =====================================================================
 \section{Distribution of Total Credit}
@@ -490,7 +509,76 @@ proposal are all candidates for forumulating future analyses.
 
 \appendix
 \section{Appendix}
-\label{appa}
+\label{appa1}
+\subsection{Technical Description of the BAP Dataflow framework}
+
+\paragraph{}
+Due to the preliminary status of the current BAP framework, a number of common
+compiler analyses have not yet been implemented, including a basic dataflow
+framework. In particular, BAP currently only includes a disassembly engine
+using the LLVM framework, a lifter from ARM/x86/x86\_64 to an intermediate
+language known as BIL (BAP Intermediate Language), and a basic semantic
+analysis for identifying basic blocks and performing a graph-based traversal
+through predecessors and successors.
+
+\paragraph{}
+As a result, we spent the first portion of our project implementing a basic
+dataflow analysis framework capable of performing both forwards and backwards
+dataflow analysis. This was accomplished by first implementing a sparse
+Bitvector module capable of representing both the infimum and supremem lattice
+elements (e.g. the empty and universal sets). Existing Bitvector
+representations in the standard library and Jane Street’s Core library are not
+capable of this, because they utilize a fixed-size bit representation for the
+Bitvector. As a result, this would require a preliminary pass through each
+basic block and each instruction to identify the number of lattice elements in
+the Bitvector, reducing performance and flexibility of analysis.
+
+\paragraph{}
+In particular, our custom implementation defines a Bitvector record (datatype)
+composed of three subvalues: (1) infinite: a boolean value that determines
+whether the bitvector is of infinite size, (2) value: a boolean value that
+determines whether the bits of the bitvector are 0 or 1, and (3) indexes: a set
+of integers that identifies indexes of the bitvector that are set to value. As
+a result, this implementation allows for the empty and universal sets to be
+respectively identified by the following simple Bitvector values: \{infinite:
+true, value: false (0), indexes: \{\}\} and \{infinite: true, value: true (1),
+indexes: \{\}\}. Standard Bitvector operations, such as union, intersection, and
+difference, are defined using these primitives. As an example, consider an
+arbitrary Bitvector a, and the following operations: empty - a = empty, a -
+empty = a, universal - a = not a, a - universal = empty. These operations are
+straightforward, even for the relative complement of the universal set with the
+arbitrary Bitvector; this can be represented by simply toggling the value
+attribute from true to false or vice-versa. 
+
+\paragraph{}
+Specifically, this highlights the idea that each finite Bitvector has two
+distinct representations: one with value set to true and indexes containing a
+set of bit indexes that are set, and another with value set to false and
+indexes containing a set of bit indexes that are unset. Although this does
+increase the logical complexity of the implementation, it allows for greater
+lattice representation flexibility with decreased memory consumption.
+
+\paragraph{}
+Otherwise, the dataflow framework implementation is relatively standardized,
+and is built on top of this lattice representation. A pair of maps are defined
+for translating unique instruction addresses of BIL or assembly instructions to
+lattice values, and vice-versa. This is achieved through the use of a mutable
+counter that identifies the unique Bitvector index associated with each
+instruction. Then, analysis results from each sequence of BIL instructions are
+propagated to each assembly instruction, and subsequently to each basic block,
+allowing for analysis granularity at all levels. Users of the framework specify
+initial values for each interior and boundary point, the entry block of
+analysis, and the direction of the dataflow analysis. Since the BAP framework
+is written in a functional language, the user can also pass a user-defined meet
+function and transfer function for performing the body of analysis. An internal
+worklist is used to keep track of basic blocks that needs to be scheduled for
+reanalysis; this is achieved by making the main dataflow analysis function
+recursive, and iterating through every basic block on the worklist before
+constructing a new worklist from those basic blocks with modified dataflow
+lattice values.
+
+\section{Appendix}
+\label{appa2}
 \paragraph{BIL Dissasembly of Listing \ref{strcpy}}
 
 \begin{verbatim}
