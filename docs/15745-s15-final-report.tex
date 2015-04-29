@@ -22,12 +22,12 @@
 \paragraph{}
 Although numerous debugging tools have been developed for performing static and
 dynamic software analysis, the majority of these require access to source
-code or utilization of special compile­time flags to embed debug information
+code or utilization of special compile­-time flags to embed debug information
 within the output binary. In contrast, little effort has been spent on
 developing static binary analysis tools which can directly analyze
-off­the­shelf executables without executing them. For this project, we plan to
+off­-the-­shelf executables without executing them. For this project, we plan to
 focus on a subset of common programming bugs that tend to introduce security
-vulnerabilities, known as memory­safety errors. Examples of these include
+vulnerabilities, known as memory­ safety errors. Examples of these include
 buffer overflows, double frees, and uninitialized variables. In particular, we
 define \emph{Security Outcomes} with respect to certain memory-safety errors,
 and subsequently implement and test static analyses that yield these outcomes.
@@ -308,7 +308,17 @@ Our experimental setup consisted of running our plugins with BAP \texttt{0.9.6}
 own examples.
 
 \subsection{Unchecked Malloc}
-% tiffany TODO
+
+In this experiment, we checked the following property for all arm
+\texttt{Coreutils} binaries:
+\begin{itemize}
+\item after a call instruction with target \texttt{malloc}, the return value
+    must be checked.
+\item if the return value is checked to be zero, there must be a conditional
+    jump followed to deal with the zero case.
+\item the return value of \texttt{malloc} can be passed to other registers. If
+    so, checking other register with the return value should be also valid.
+\end{itemize}
 
 \subsection{Stack Check Plugin}
 
@@ -390,8 +400,32 @@ quantitative at this stage. However, they serve as very useful data points
 toward developing more sophisticated analyses.
 
 \subsection{Malloc Check Plugin}
-% tiffany TODO
-
+So far we applied our checking on 129 binaries from \texttt{Coreutils}. The
+result showed that we found 15 places that \texttt{malloc} is not checked
+according to our rules.
+\begin{center}
+\lstset{language=C, label=strcpy,
+caption=Function re\_node\_set\_alloc, breaklines=true, basicstyle=\tiny, numbers=none}
+\begin{lstlisting}
+0000f910 <re_node_set_alloc>:
+    f910:       e92d4010        push    {r4, lr}
+    f914:       e1a04000        mov     r4, r0
+    f918:       e5801000        str     r1, [r0]
+    f91c:       e3a03000        mov     r3, 0
+    f920:       e5803004        str     r3, [r0, 4]
+    f924:       e1a00101        lsl     r0, r1, 2
+    f928:       ebffe6f6        bl      9508 <malloc@plt>
+    f92c:       e5840008        str     r0, [r4, 8]
+    f930:       e3500000        cmp     r0, 0
+    f934:       03a0000c        moveq   r0, 12
+    f938:       13a00000        movne   r0, 0
+    f93c:       e8bd8010        pop     {r4, pc}
+\end{lstlisting}
+\end{center}
+For example, we found that although function \texttt{re\_node\_set\_alloc}
+compares the return value of \texttt{malloc}, it does not deal with the case
+when the return value is 0. Instead, the return value will be stored to the
+stack and overwritten to other value.
 
 \subsection{Stack Check Plugin}
 
@@ -448,7 +482,7 @@ due to containing a \texttt{strcpy(buf,"none")}~\cite{xorg} call. However, this 
 to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
 principally highlights the difficulty in choosing candidates for testing.
 
-\paragraph{} 
+\paragraph{}
 One surprising result was the great number of statements (over
 200) that some argument sites were found to depend on in \texttt{Coreutils}
 binaries. It was also the case that this result was exhibited inside large
@@ -496,7 +530,7 @@ variables; e.g. usage of variables with unassigned values
   MemCheck, Clang Static Analyzer, Coverity, CodeSonar, etc.
 \end{itemize}
 
-\paragraph{} 
+\paragraph{}
 It has been a promising exercise to prototype and test our
 analyses within the context of this project. We consider the experience and
 insights gained throughout to be particularly valuable for performing continued
