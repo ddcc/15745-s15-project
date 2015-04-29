@@ -8,7 +8,7 @@
 
 \date{\today}
 
-\title{\Large \bf Memory Safety Bug Hunting with BAP} 
+\title{\Large \bf Memory Safety Bug Hunting with BAP}
 
 \author{Tiffany Bao, Dominic Chen, Rijnard van Tonder}
 
@@ -157,23 +157,24 @@ int main() {
 
 \paragraph{}
 The disassembly of this binary might appear as follows (with two basic blocks,
-before and after the call): 
+before and after the call):
 
 \begin{center}
 \lstset{language=C, label=mallocdisasm,
 caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
 \begin{lstlisting}
-  begin(main_ENTRY) 
-      000082c8: 04 e0 2d e5    str lr, [sp, #-4]! 
-      000082cc: 20 00 a0 e3    mov r0, #0x20       
+  begin(main_ENTRY)
+      000082c8: 04 e0 2d e5    str lr, [sp, #-4]!
+      000082cc: 20 00 a0 e3    mov r0, #0x20
       000082d0: 49 00 00 eb    bl #0x124           ; call malloc
   end(main_ENTRY)
- 
-  begin(main_0xc) 
+
+  begin(main_0xc)
       000082d4: 00 00 50 e3    cmp r0, #0x0        ; check malloc return value
-      000082d8: 02 00 00 0a    beq #0x8            
+      000082d8: 02 00 00 0a    beq #0x8
   end(main_0xc)
 \end{lstlisting}
+\label{fig:malloc}
 \end{center}
 
 \paragraph{}
@@ -231,7 +232,7 @@ For the \texttt{dst} variable on the stack, encoded as an
 \texttt{<address,statement>} pair, we have:
 
 \begin{verbatim}
-    <(0x8490:32, 0)> R0 := R2 
+    <(0x8490:32, 0)> R0 := R2
 \end{verbatim}
 
 The plugin will determine all preceding instructions it is dependent on:
@@ -249,8 +250,7 @@ output may be viewed in
 the Appendix~\ref{appa}.
 
 \subsection{Malloc Checking Security Outcomes}
-% tiffany TODO
-
+\input{mallocchecking}
 \subsection{Stack-based Security Outcomes}
 \label{stackoutcomes}
 
@@ -277,7 +277,7 @@ assumed the standpoint that any \texttt{src} address originating from the
 check we only consider the statement which loads a value immediately before the
 call, and not originating previous statements. % because memory and interfering statements
 
-\paragraph{Stack accesses within the frame} 
+\paragraph{Stack accesses within the frame}
 For this outcome, we confirm that all instructions which access elements on
 the stack, plus a fixed offset, are within the stack range of a function. We
 infer the size of the frame by considering the statements that manipulate
@@ -381,7 +381,7 @@ Our evaluation of these plugins are largely qualitative rather than
 quantitative at this stage. However, they serve as very useful data points
 toward developing more sophisticated analyses.
 
-\subsection{Malloc Check Plugin} 
+\subsection{Malloc Check Plugin}
 % tiffany TODO
 
 
@@ -392,7 +392,7 @@ As mentioned, our stack check plugin did not trigger any violations when run
 over the \texttt{Coreutils} test suite. This result was largely anticipated:
 the \texttt{Coreutils} library was chosen so that we could verify that our
 plugins run and to rule out the possibility that binaries in \texttt{Coreutils}
-exhibited rudimentary flaws. 
+exhibited rudimentary flaws.
 
 \paragraph{}
 In critique of this plugin, there are a number of stack-based errors that could
@@ -400,7 +400,7 @@ occur despite our checks. For example, consider a stack frame containing
 multiple local buffers at runtime. It is feasible that a buggy \texttt{strcpy}
 call could copy bytes beyond the boundary of a single buffer into an adjacent
 buffer, while remaining within the stack bounds. Our plugin would not detect
-this case. Consider a further case where memory accesses to the stack 
+this case. Consider a further case where memory accesses to the stack
 are dependent on general purpose registers---here we cannot conclude
 whether the access is within range of the stack frame.
 
@@ -415,19 +415,24 @@ pointer-analysis, and infer stack boundaries.
 \subsection{Malloc Plugin}
 % dominic TODO
 
+
+% =====================================================================
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
 %TODO tiffany, dominic
 
-\subsection{Reasoning about buffer overflows}
-\paragraph{}
+There were a number of surprises and lessons learned throughout this project.
 
+\subsection{Reasoning about buffer overflows}
+
+\paragraph{}
 An initial approach towards ensuring stack buffer overflow detection was to
 attempt to reason about sizes of buffers which are passed to ``Potentially
 Dangerous Functions''~\cite{seacord2008cert} such as \texttt{strcpy}. This
 turned out to be an unfruitful approach for the scope of the project, since one
 would have to invariably have to reason about memory accesses.
 
+\paragraph{}
 A concrete example that illustrates the difficulty of performing checks on
 \texttt{strcpy} was found when we considered \texttt{libxkbfile.so.1.0.2}.
 Initially we thought that this is a candidate we could perform our check on,
@@ -435,11 +440,24 @@ due to containing a \texttt{strcpy(buf,"none")} call. However, this was found
 to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
 principally highlights the difficulty in choosing candidates for testing.
 
+\paragraph{} 
+One surprising result was the great number of statements (over
+200) that some argument sites were found to depend on in \texttt{Coreutils}
+binaries. It was also the case that this result was exhibited inside large
+functions. When testing the plugin on small examples initially, the number of
+statements rarely numbered more than 20. As mentioned previously, we speculate
+that this will affect
+
 \subsection{General Things Learned}
 
 In general, this project made clear the difficulty of tackling binary
-problems.
+problems. Specifically, we cannot advance the problem of analyzing binaries
+without basic ``building blocks'' which provide information about the security
+outcome we wish to address. For each such potential outcome in the future,
+we will have to consider critically what types of ``building blocks'' we need,
+whether pointer analysis, path-sensitivity, context-sensitivity, etc.
 
+\paragraph{}
 We learned that it is more effective in our research to develop our approaches
 with respect to security outcomes. By doing so, we incrementally identify the
 requirements for producing desired security outcomes (e.g., reaching
@@ -449,14 +467,23 @@ project), rather than sophisticated analysis being stand-alone. This follows
 because we require more fundamental information before reasoning about
 further complexities.
 
+% =====================================================================
 \section{Conclusions and Future Work}
+\paragraph{}
+We will focus specifically on refining the sophistication of our analyses
+to handle broader cases as outlined in our discussions. A major benefit of
+identifying the limitations in our approch and evaluation is that it
+immediately highlights areas of refinement. 
+
+\paragraph{} 
+It has been a promising exercise to prototype and test our
+analyses within the context of this project. We consider the experience and
+insights gained throughout to be particularly valuable for performing continued
+research in our group. The additional goals beyond 100\% in our original
+proposal are all candidates for forumulating future analyses.
 
 
-Just as valuable to find out what works as what doesn't... that really
-is a meaningful contribution. Further applications: nevernote, fgets, coverity?
-
-Influence of statements...
-
+% =====================================================================
 \section{Distribution of Total Credit}
 
 \clearpage
