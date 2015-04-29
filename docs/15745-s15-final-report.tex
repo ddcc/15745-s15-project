@@ -449,6 +449,8 @@ pointer-analysis, and infer stack boundaries.
 \subsection{Malloc Plugin}
 % dominic TODO
 
+
+% =====================================================================
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
 %TODO tiffany, dominic
@@ -456,60 +458,69 @@ pointer-analysis, and infer stack boundaries.
 There were a number of surprises and lessons learned throughout this project.
 
 \subsection{Reasoning about buffer overflows}
-\paragraph{}
-% TODO urgent rijnard
 
+\paragraph{}
 An initial approach towards ensuring stack buffer overflow detection was to
 attempt to reason about sizes of buffers which are passed to ``Potentially
 Dangerous Functions''~\cite{seacord2008cert} such as \texttt{strcpy}. This
 turned out to be an unfruitful approach for the scope of the project, since one
 would have to invariably have to reason about memory accesses.
 
- For one, due to time constraints and
-complexity, we opted for an approach that does not require pointer analysis.
+\paragraph{}
+A concrete example that illustrates the difficulty of performing checks on
+\texttt{strcpy} was found when we considered \texttt{libxkbfile.so.1.0.2}.
+Initially we thought that this is a candidate we could perform our check on,
+due to containing a \texttt{strcpy(buf,"none")}~\cite{xorg} call. However, this was found
+to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
+principally highlights the difficulty in choosing candidates for testing.
 
+\paragraph{} 
+One surprising result was the great number of statements (over
+200) that some argument sites were found to depend on in \texttt{Coreutils}
+binaries. It was also the case that this result was exhibited inside large
+functions. When testing the plugin on small examples initially, the number of
+statements rarely numbered more than 20. As mentioned previously, we speculate
+that this will affect
 
-refinement as optimization
+\subsection{General Things Learned}
 
-Mention why it's difficult: libxkbfile.so.1.0.2
+In general, this project made clear the difficulty of tackling binary
+problems. Specifically, we cannot advance the problem of analyzing binaries
+without basic ``building blocks'' which provide information about the security
+outcome we wish to address. For each such potential outcome in the future,
+we will have to consider critically what types of ``building blocks'' we need,
+whether pointer analysis, path-sensitivity, context-sensitivity, etc.
 
-challenging task... forumalting and putting into practice, concrete
+\paragraph{}
+We learned that it is more effective in our research to develop our approaches
+with respect to security outcomes. By doing so, we incrementally identify the
+requirements for producing desired security outcomes (e.g., reaching
+definitions, use-def). It also seems to be a pattern that more sophisticated
+analyses are built on top of simpler analyses (like those produced in this
+project), rather than sophisticated analysis being stand-alone. This follows
+because we require more fundamental information before reasoning about
+further complexities.
 
-
-Therefore, rather that attempting to infer and compare the sizes of buffers,...
-
-For example, data dependency instructions numbering in the hundreds.
-
-
-Rules out some possiblities. Requires continued refinement.
-
-undecidability of ptr analysis.
-
-
-Not strictly optimization, it is a refining of an analysis.
-
-limitations highlight areas of refinement, not bad.
-
-Deductive on what we need, towards an outcome (approach seems tow ork,
-with respect to an outcome!)
-
-How did we respond
-
-results were not surprising.
-but promising...
-what did you learn from this experience in general?
-
+% =====================================================================
 \section{Conclusions and Future Work}
+\paragraph{}
+We will focus specifically on refining the sophistication of our analyses
+to handle broader cases as outlined in our discussions. A major benefit of
+identifying the limitations in our approch and evaluation is that it
+immediately highlights areas of refinement. 
 
-Just as valuable to find out what works as what doesn't... that really
-is a meaningful contribution. Further applications: nevernote, fgets, coverity?
+\paragraph{} 
+It has been a promising exercise to prototype and test our
+analyses within the context of this project. We consider the experience and
+insights gained throughout to be particularly valuable for performing continued
+research in our group. The additional goals beyond 100\% in our original
+proposal are all candidates for forumulating future analyses.
 
-Influence of statements...
 
+% =====================================================================
 \section{Distribution of Total Credit}
 
 \clearpage
-
 
 \appendix
 \section{Appendix}

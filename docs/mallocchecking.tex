@@ -1,21 +1,22 @@
 For Malloc checking, we suppose that a security program should always check the
-return value of \texttt{malloc}. This is a strong yet reasonable requirement for
-security coding, because if the point is failed to be assigned and the space for
-the pointer is failed to be allocated, attack may use this failed pointer to
-exploit the program.
+return value of \texttt{malloc}. This is a strong yet reasonable requirement
+for ensuring secure code, because if the pointer fails to be assigned a value
+due to a lack of space for allocation, an attacker may be able to
+exploit a NULL pointer dereference at a later point in the program.
 
-To demonstrate how our work runs, we use the example shown in \ref{fig:malloc}.
-In this example, function \texttt{malloc} is called at address \texttt{0x82d0}.
-Followed by the instruction, we have a comparison instruction which compare the
-return value \texttt{r0} to constant value \texttt{0}. This piece of code is
-thus a security one for \texttt{malloc} checking.
+To demonstrate how our plugin check works, observe the example shown in
+\ref{fig:malloc}. In this example, the function \texttt{malloc} is called at
+address \texttt{0x82d0}. Followed by the instruction, we have a comparison
+instruction which compare the return value \texttt{r0} to constant value
+\texttt{0}. This piece of code is thus a candidate for \texttt{malloc}
+checking.
 
-Note that the comparison instruction is not necessarily to be immediately after
-the malloc call instruction. Also, a more complicated case could be that, the
-return value is passed to other register and then the other register is checked
-instead of `r0`.
+Note that the comparison instruction is not necessarily available immediately after
+the malloc call instruction. Also, a more complicated case could be that the
+return value is passed to another register which in turn is checked
+instead of \texttt{r0}.
 
-Another example that we come across is from binary coreutils\_O1\_[, which is
+Another example that we came across is from binary coreutils\_O1\_[, which is
 shown as following:
 
 \begin{center}
@@ -41,21 +42,23 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
 \end{lstlisting}
 \end{center}
 In this example, after calling malloc at address d4dc, the program copies the
-return value to register r8, and then just tp address d504 where it compares the
-value of r8 to constant 0. The reason of compiling the program in such way is
-mainly because of optimization. In specifically, this helps decreasing the
-redundant code, by reusing \texttt{d504: cmp r8, 0} and the following instructions.
+return value to register \texttt{r8}, and then to address \texttt{d504} where
+it compares the value of \texttt{r8} to constant 0. The reason of compiling the
+program in such way is mainly because of optimization. Specifically, this
+helps decreasing the redundant code, by reusing \texttt{d504: cmp r8, 0} and
+the subsequent instructions.
 
-To addres this problem, we use the forward-data-deps plugin to help finding the
+To address this problem, we use the forward-data-deps plugin to help finding the
 instructions that depends on the return value. Here dependence means that one or
-more variables used in the instruction depends on register r0. For example,
-given instruction \texttt{d4e0: mov r8, r0}, we find that instruction d504: cmp r8, 0
-depends on r0, because the value of r8 is from r0. Also, instruction d508
-depends on r0, because the flag registers are determined by the d504, and in
-d504 r8 depends on r0.
+more variables used in the instruction depends on register \texttt{r0}. For
+example, given instruction \texttt{d4e0: mov r8, r0}, we find that instruction
+\texttt{d504: cmp r8, 0} depends on \texttt{r0}, because the value of
+\texttt{r8} is from \texttt{r0}. Also, instruction d508 depends on r0, because
+the flag registers are determined by
+the \texttt{d504}, and in \texttt{d504 r8} depends on \texttt{r0}.
 
-Now back to the example, using forward-data-deps plugin, we get all dependence
-instructions once we find a move instruction with r0 as source. For the next
-step, we check if there is cmp instruction among all instructions we found. If
-there is one, we consider the call is safe. If not, we consider the call is
-unsafe.
+Looking back to the example, and using forward-data-deps plugin, we get all
+dependence instructions once we find a move instruction with \texttt{r0} as
+source. For In the next step, we check if there is \texttt{cmp} instruction
+among all instructions we found. If there is one, we consider call is safe. If
+not, we consider the call unsafe.
