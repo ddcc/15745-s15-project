@@ -32,7 +32,7 @@ buffer overflows, double frees, and uninitialized variables. In particular, we
 define \emph{Security Outcomes} with respect to certain memory-safety errors,
 and subsequently implement and test static analyses that yield these outcomes.
 All analyses were written against our group's Binary Analysis Platform
-(BAP\footnote{\url{https://github.com/BinaryAnalysisPlatform/bap}})~\cite{bap, brumley2011bap},
+(BAP)\footnote{\url{https://github.com/BinaryAnalysisPlatform/bap}}~\cite{bap, brumley2011bap},
 and are available online \footnote{\url{https://github.com/ddcc/15745-s15-project}}.
 
 \paragraph{}
@@ -49,7 +49,7 @@ we have much to say towards lessons learned in \S\ref{lessonslearned}.
 \label{approachoverview}
 
 \paragraph{}
-At the outset of this project, we planned to implement and test the static
+Initially, we planned to implement and test the following static
 analyses with respect to our original proposal:
 
 \begin{enumerate}
@@ -60,7 +60,7 @@ analyses with respect to our original proposal:
 \end{enumerate}
 
 \paragraph{}
-Equipped with the knowledge of data flow dependency between instructions (1),
+Equipped with the knowledge of data flow dependencies between instructions (1),
 we determined to reason about various properties of typical vulnerabilities
 that we could check (2-4). For example, we might like to follow how arguments
 to a `strcpy` call are influenced by previous instructions as a function of
@@ -71,13 +71,13 @@ the stack register.
 \paragraph{}
 Engler et. al. found numerous bugs with system-specific static analyses,
 implemented by way of a meta-compilation language for the \texttt{gcc} compiler
-\cite{dawson, dawson2}. Analyses are composed in the form of correctness rules
-and automatic inference of rules form source code. Memory errors that are
-checked include null pointer bugs, not checking allocation results, and uses of
-freed pointers. This relates to our goal in that we would ideally like to perform
-similar checks, albeit at the level of complexity of binary code. Whereas
+\cite{dawson, dawson2}. Analyses are composed in the form of correctness rules,
+and these rules can be automatically inferred from source code. Memory errors that are
+checked include NULL pointer bugs, failure to verify return value of allocations, and uses of
+already-freed pointers. Similarly, we would ideally like to perform comparable
+memory safety analyses, except at the level of binary code. Whereas
 Engler's work matured into a generic platform for specifying analyses, we must
-start first with an ad-hoc approach to gain insight and familiarity in the
+start first with an ad-hoc approach to gain insight and familiarity with the
 problem domain presented by binaries.
 
 The Jakstab framework~\cite{kinder2008jakstab} provides a platform for
@@ -95,7 +95,7 @@ Our key technical contributions are as follows:
   \item A dataflow analysis framework for BAP.
   \item General plugins for BAP that deliver
     \begin{enumerate}
-      \item reaching definitions and
+      \item reaching definitions, and
       \item data flow dependency resolution (use-def and def-use chains).
       \item registers corresponding to function call arguments and returns,
             according to the ARM ABI.
@@ -105,7 +105,7 @@ Our key technical contributions are as follows:
       \item whether memory allocation checks are performed on `memcpy`,
       \item whether calls such as strcpy are safe from buffer overflows under
         specific conditions, and
-      \item whether malloc calls... % dominic?
+      \item whether access to heap-allocated memory is in-bounds.
     \end{enumerate}
   \item Results of testing the aforementioned plugins on the \texttt{GNU Coreutils}\footnote{\url{https://www.gnu.org/software/coreutils/}}
     software suite.
@@ -115,26 +115,24 @@ Our key technical contributions are as follows:
 
 \paragraph{}
 Due to the exploratory nature of this project on the binary level, we
-concentrate much of our efforts on looking at viable approaches of analysis,
-rather than optimizing properties of the analysis or testing against measurable
-benchmarks. For this reason, it doesn't come as a surprise that our evaluation
-section may be less expressive than our approach and ``lessons learned''.
-
+concentrated much of our efforts on examining various analysis approaches,
+rather than optimizing or improving the scope of a specific analysis.
+benchmarks.
 \section{Approach}
 
 \subsection{Overview}
 \paragraph{}
-Here we discuss our approach toward ensuring security properties as it evolved
-over the course of the project. Initially, we determined to reason about each
+Here we discuss our approach towards ensuring security properties as it evolved
+over the course of the project. Initially, we decided to reason about each
 of the cases in \S\ref{approachoverview} that relate to vulnerabilities
-(2-4). To do so, we needed some basic infrastructure (1) which we describe
-first. Thereafter, we describe our specific approaches to performing
-security analyses with respect to specific \emph{Security Outcomes}.
+(2-4). In order to do so, we needed some basic infrastructure (1), which will be
+described shortly. Afterwards, we describe our specific approach to performing
+security analyses with respect to our \emph{Security Outcomes}.
 
 \subsection{The Case for Reaching Definitions}
 
 \paragraph{}
-For example, consider the following code, where we desire to verify
+For example, consider the following code, for which we desire to verify
 that the return value of \texttt{malloc} is checked:
 
 \begin{center}
@@ -145,9 +143,7 @@ caption=malloc.c, breaklines=true, basicstyle=\tiny, numbers=left}
 #include <stdio.h>
 
 int main() {
-  // Uninitialized variable
   char *array = 0;
-
 
   array = malloc(32 * sizeof(*array));
 
@@ -185,16 +181,16 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
 
 \paragraph{}
 We would like to confirm that a check takes place after the call to malloc;
-i.e., we would check for the presence of the \texttt{cmp} instruction and the
+i.e.; we want to check for the presence of a \texttt{cmp} instruction and the
 operand \texttt{r0} in \texttt{main\_0xc}.
 
 \paragraph{}
-However, it may easily be the case that the contents of \texttt{r0} are first
-moved to another register, \texttt{r3}, which is subsequently checked by a
-\texttt{cmp} instruction. In order to verify the buggy condition that the malloc
-return value is never checked, we must verify that any flow of this data from
-\texttt{r0} to other registers are also not checked. To obtain the statements
-where \texttt{r0} data flows to, we make use of def-use chains. For the
+However, it may be the case that the contents of \texttt{r0} are first
+moved to another register, \texttt{r3}, which is subsequently checked by the
+\texttt{cmp} instruction. In order to detect an unchecked \texttt{malloc}
+return value, we must verify that there exists a flow of data from
+\texttt{r0} to other registers that is also unchecked. To obtain the statements
+where data from \texttt{r0} flows to, we make use of def-use chains. For the
 definition of \texttt{r0} in the BIL IR, we check all uses of \texttt{r0} and
 transitively look up the def-use chains for further registers, such as
 \texttt{r3}, which the value in \texttt{r0} flows to. On the final set of
@@ -202,13 +198,13 @@ instructions, we verify that the data is subject to a \texttt{cmp} instruction.
 
 \paragraph{}
 This example demonstrates the need for def-use chains; our stack and heap based
-analyses in turn also require use-def chains. Due to retreating edges in the
+analyses in turn also require use-def chains. Due to backwards edges in the
 CFG, it is difficult to produce def-use chains given a single instruction. For
 this reason we first implemented a dataflow framework and a
-reaching-definitions pass. An exhaustive description of the
-implementation details for this framework, as implemented in OCaml for
+reaching-definitions pass. A more comprehensive description of the
+dataflow framework implementation, as written in OCaml for
 BAP, may be viewed in Appendix~\ref{appa1}.
-From the reaching definitions, we generate def-use
+From the reaching definitions results, we generate def-use
 and use-def chains as necessary---e.g., we filter on those reaching definitions
 which concern a particular use or def of a register.
 
@@ -217,7 +213,7 @@ which concern a particular use or def of a register.
 \paragraph{}
 An extension to the def-use and use-def chains was to produce the data (flow)
 dependencies of a given statement in a forward or backward direction,
-respectively. Essentially, given a register in a definition (such as a Move
+respectively. Essentially, given a register in a definition (such as a \texttt{mov}
 instruction in the BIL IR), we can produce a set of all instructions that are
 determined to transitively affect its value. We implement this
 by way of a data dependency plugin for BAP. Consider the arguments to the
@@ -256,8 +252,7 @@ The plugin will determine all preceding instructions it is dependent on:
 Now, we can observe the role that the stack pointer \texttt{SP} plays
 when considering \texttt{dst}. A full listing of the BIL disassembly,
 the data dependencies for \texttt{argv[1]}, and a graphical
-output may be viewed in
-the Appendix~\ref{appa2}.
+output may be viewed in the Appendix~\ref{appa2}.
 
 \subsection{Malloc Checking Security Outcomes}
 \input{mallocchecking}
@@ -265,7 +260,7 @@ the Appendix~\ref{appa2}.
 \label{stackoutcomes}
 
 \paragraph{}
-A number of unfruitful approaches documented in~\S\ref{lessonslearned} lead us
+A number of unfruitful approaches as documented in~\S\ref{lessonslearned} lead us
 to opting for an approach where we identify two properties which are important
 from a security perspective, without inferring sizes of stack-based buffers.
 
@@ -278,7 +273,7 @@ optimizations \texttt{strcpy} (as well as \texttt{sprintf} calls) would be
 compiled to a \texttt{LDMIA.W} ARM instruction which directly copies memory.
 Lastly, we observed that \texttt{strcpy} and \texttt{sprintf} may be replaced
 by the \texttt{\_\_strcpy\_chk} and \texttt{\_\_sprintf\_chk} counterparts,
-which are less interesting to analyse from a security standpoint.
+which are less interesting to analyze from a security standpoint.
 
 \paragraph{}
 Nevertheless, we implemented a partial check of this case in the plugin, and
@@ -597,7 +592,7 @@ toward developing more sophisticated analyses.
         \centering
     \includegraphics[width=0.8\textwidth]{malloccheckplot}
 \end{figure}
-So far we applied our checking on 128 binaries from \texttt{Coreutils}. The
+So far, we applied our checking on 128 binaries from \texttt{Coreutils}. The
 result showed that we found 15 places that \texttt{malloc} is not checked
 according to our rules.
 \begin{center}
@@ -619,10 +614,10 @@ caption=Function re\_node\_set\_alloc, breaklines=true, basicstyle=\tiny, number
     f93c:       e8bd8010        pop     {r4, pc}
 \end{lstlisting}
 \end{center}
-For example, we found that although function \texttt{re\_node\_set\_alloc}
-compares the return value of \texttt{malloc}, it does not deal with the case
-when the return value is 0. Instead, the return value will be stored to the
-stack and overwritten to other value.
+For example, we found that although the function \texttt{re\_node\_set\_alloc}
+compares the return value of \texttt{malloc}, it does not handle the case
+where the return value is 0. Instead, the return value will be stored on the
+stack and overwrite another value.
 
 \subsection{Stack Check Plugin}
 
@@ -711,7 +706,7 @@ further complexities.
 \paragraph{}
 We will focus specifically on refining the sophistication of our analyses
 to handle broader cases as outlined in our discussions. A major benefit of
-identifying the limitations in our approch and evaluation is that it
+identifying the limitations in our approach and evaluation is that it
 immediately highlights areas of refinement. The additional goals beyond 100\%
 in our original proposal are all candidates for formulating future analyses.
 In summary, these are:
@@ -858,7 +853,7 @@ lattice values.
   mem := mem         with [R11 + 0xFFFFFFE4:32, el]:u32 <- R1
   R3 := R11 - 0x10:32
   t_447 := 0x10:32
-  s_446 := R11
+  s_446 := R11g
   R2 := 0x0:32
   mem := mem         with [R3 + 0x0:32, el]:u32 <- R2
   R3 := R3 + 0x4:32
