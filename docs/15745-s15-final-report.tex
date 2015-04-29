@@ -22,17 +22,18 @@
 \paragraph{}
 Although numerous debugging tools have been developed for performing static and
 dynamic software analysis, the majority of these require access to source
-code or utilization of special compile­-time flags to embed debug information
+code or utilization of special compile-time flags to embed debug information
 within the output binary. In contrast, little effort has been spent on
 developing static binary analysis tools which can directly analyze
-off­-the-­shelf executables without executing them. For this project, we plan to
+off-the-­shelf executables without executing them. For this project, we plan to
 focus on a subset of common programming bugs that tend to introduce security
-vulnerabilities, known as memory­ safety errors. Examples of these include
+vulnerabilities, known as memory safety errors. Examples of these include
 buffer overflows, double frees, and uninitialized variables. In particular, we
 define \emph{Security Outcomes} with respect to certain memory-safety errors,
 and subsequently implement and test static analyses that yield these outcomes.
 All analyses were written against our group's Binary Analysis Platform
-(BAP) \cite{bap, brumley2011bap}.
+(BAP\footnote{\url{https://github.com/BinaryAnalysisPlatform/bap}})~\cite{bap, brumley2011bap},
+and are available online \footnote{\url{https://github.com/ddcc/15745-s15-project}}.
 
 \paragraph{}
 A factor of this research area that appeals to many is the ability to
@@ -80,9 +81,9 @@ start first with an ad-hoc approach to gain insight and familiarity in the
 problem domain presented by binaries.
 
 The Jakstab framework~\cite{kinder2008jakstab} provides a platform for
-analyzying binaries. However, it is not oriented toward detecting security
+analyzing binaries. However, it is not oriented toward detecting security
 vulnerabilities, but rather recovering abstractions from binaries (e.g.,
-CFG reconstruction). Frama-c is an example of a framework which
+CFG reconstruction). Frama-C is an example of a framework which
 allows one to check various properties, including security properties,
 but works on the source level~\cite{cuoq2012frama}.
 
@@ -106,7 +107,7 @@ Our key technical contributions are as follows:
         specific conditions, and
       \item whether malloc calls... % dominic?
     \end{enumerate}
-  \item Results of testing the aforementioned plugins on the \texttt{GNU Coreutils}
+  \item Results of testing the aforementioned plugins on the \texttt{GNU Coreutils}\footnote{\url{https://www.gnu.org/software/coreutils/}}
     software suite.
 \end{enumerate}
 
@@ -223,7 +224,7 @@ by way of a data dependency plugin for BAP. Consider the arguments to the
 following \texttt{strcpy} call:
 
 \begin{center}
-\lstset{language=C, label=strcpy,
+\lstset{language=C, label=strcpy_src,
 caption=strcpy.c, breaklines=true, basicstyle=\tiny, numbers=none}
 \begin{lstlisting}
 #include <stdio.h>
@@ -472,7 +473,7 @@ The plugin collected a number of statistics on the binaries, including
 the number of argument sites (that is, statements that set up registers
 before a call), the number of functions which contained calls to `dangerous'
 functions, and the maximum number of statements on which an argument
-site statement was dependent. These are illustreated in Figure~\ref{fig:corestats}.
+site statement was dependent. These are illustrated in Figure~\ref{fig:corestats}.
 
 \begin{figure}[ht!]
 \centering
@@ -499,7 +500,7 @@ maximum number of statements a single argument site statement is dependent on.
 We observe from Figure~\ref{fig:corestats} that this could number in the hundreds,
 whereas the total number could range in the thousands (Figure ~\ref{fig:coretotal}).
 The implication here is that any additional reasoning and refinement to static
-analysis methods across cases composed of sizeable dependencies need to be
+analysis methods across cases composed of sizable dependencies need to be
 carefully considered. For instance, if we add forms of pointer analysis,
 we may speculate about the scale of complexity of memory operations for
 argument sites.
@@ -594,7 +595,7 @@ So far we applied our checking on 129 binaries from \texttt{Coreutils}. The
 result showed that we found 15 places that \texttt{malloc} is not checked
 according to our rules.
 \begin{center}
-\lstset{language=C, label=strcpy,
+\lstset{language=C, label=strcpy_asm,
 caption=Function re\_node\_set\_alloc, breaklines=true, basicstyle=\tiny, numbers=none}
 \begin{lstlisting}
 0000f910 <re_node_set_alloc>:
@@ -724,7 +725,7 @@ variables; e.g. usage of variables with unassigned values
 It has been a promising exercise to prototype and test our
 analyses within the context of this project. We consider the experience and
 insights gained throughout to be particularly valuable for performing continued
-research in our group. 
+research in our group.
 
 % =====================================================================
 \section{Distribution of Total Credit}
@@ -772,7 +773,7 @@ arbitrary Bitvector a, and the following operations: empty - a = empty, a -
 empty = a, universal - a = not a, a - universal = empty. These operations are
 straightforward, even for the relative complement of the universal set with the
 arbitrary Bitvector; this can be represented by simply toggling the value
-attribute from true to false or vice-versa. 
+attribute from true to false or vice-versa.
 
 \paragraph{}
 Specifically, this highlights the idea that each finite Bitvector has two
@@ -803,7 +804,7 @@ lattice values.
 
 \section{Appendix}
 \label{appa2}
-\paragraph{BIL Dissasembly of Listing \ref{strcpy}}
+\paragraph{BIL Dissasembly of Listing \ref{strcpy_asm}}
 
 \begin{verbatim}
   SP := SP - 0x8:32
