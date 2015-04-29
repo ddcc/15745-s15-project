@@ -3,6 +3,7 @@
 \usepackage[hyphens]{url}
 \usepackage{colortbl}
 \usepackage{listings}
+\usepackage{graphicx}
 \begin{document}
 
 \date{\today}
@@ -232,8 +233,9 @@ The plugin will determine all preceding instructions it is dependent on:
 
 Now, we can observe the role that the stack pointer \texttt{SP} plays
 when considering \texttt{dst}. A full listing of the BIL disassembly,
-as well as the data dependencies for \texttt{argv[1]} may be viewed in
-the Appendix~\ref{appa}
+the data dependencies for \texttt{argv[1]}, and a graphical
+output may be viewed in
+the Appendix~\ref{appa}.
 
 % TODO insert graphviz graphic
 
@@ -251,23 +253,27 @@ from a security perspective, without inferring sizes of stack-based buffers.
 \paragraph{\texttt{src} is a constant}
 If we can determine that the \texttt{src} buffer is a constant, (and therefore
 not dependent on any user input), the \texttt{strcpy} call is safe. While a
-good property to check, it was found that a constant value corresponding
-to the \texttt{src} argument never occured. With O0 and O1 optimizations,
-these are not there (ida output)
+good property to check, it was found that a constant value corresponding to the
+\texttt{src} argument didn't occur in practice. Depending on compiler
+optimizations \texttt{strcpy} (as well as \texttt{sprintf} calls) would be
+compiled to a \texttt{LDMIA.W} ARM instruction which directly copies memory.
+Lastly, we observed that \texttt{strcpy} and \texttt{sprintf} may be replaced
+by the \texttt{\_\_strcpy\_chk} and \texttt{\_\_sprintf\_chk} counterparts,
+which are less interesting to analyse from a security standpoint.
 
-\paragraph{\texttt{src} is dependent on .ro address} 
-Example only, not found in coreutils
+Nevertheless, we implemented a partial check of this case in the plugin, and
+assumed the standpoint that any \texttt{src} address originating from the
+\texttt{ro.data} section implies a constant, fixed value. However, for this
+check we only consider the statement which loads a value immediately before the
+call, and not originating previous statements. % because memory and interfering statements
 
-\paragraph{\texttt{dst} is on the stack}
-Namely, we first infer the stack size of a given function from the disassembly
-of the function prologue. This may be denoted 
-
-Needs more reasoning with respect to the stack size of a function
-
-Rules out some possiblities. Requires continued refinement.
-
-undecidability of ptr analysis. 
-
+\paragraph{Stack accesses within frame} 
+For this outcome, we confirm that all instructions which access elements on
+the stack, plus a fixed offset, are within the stack range of a function. We
+infer the size of the frame by considering the statements that manipulate
+SP in the function prologue. While we didn't observe any cases where the
+stack range was exceeded, this type of check forms the basis for further,
+more sophisticated improvements.
 
 % heap-based? or malloc?
 \subsection{Malloc-based Security Outcomes}
@@ -277,6 +283,8 @@ undecidability of ptr analysis.
 \section{Experimental Setup}
 
 CoreUtils used.
+Existing...
+Restricted to ARM :( (no abi for x86)
 
 
 \subsection{Unchecked Malloc}
@@ -286,6 +294,23 @@ CoreUtils used.
 
 
 \section{Experimental Evaluation}
+
+
+
+
+\subsection{Stack}
+
+Neither of our checks were flagged as violations in the coreutils suite--
+thus we have security outcomes, but it's not that 'great'. 
+
+A critical part of this project was developing an intuition for...
+
+
+\paragrph{Observations}
+
+\paragraph{Overall effectiveness}
+
+
 
 
 
@@ -307,12 +332,19 @@ Therefore, rather that attempting to infer and compare the sizes of buffers,...
 For example, data dependency instructions numbering in the hundreds.
 
 Compiler optimizations (big one): \_\_stck\_check, sprintf, etc
+ a big one was the limitations already imposed by optimizing compilers,
+\texttt{libxkbfile.so.1.0.2}.
+
+Rules out some possiblities. Requires continued refinement.
+
+undecidability of ptr analysis. 
+
 
 
 \section{Conclusions and Future Work}
 
 Just as valuable to find out what works as what doesn't... that really
-is a meaningful contribution.
+is a meaningful contribution. Further applications: nevernote, fgets, coverity?
 
 
 \clearpage
@@ -394,6 +426,15 @@ is a meaningful contribution.
   <(0x8484:32, 2)> R3 := R3 + 0x4:32
   <(0x8488:32, 0)> R3 := mem[R3 + 0x0:32, el]:u32
 \end{verbatim}
+
+\paragraph{Graphical output of BIL data dependencies, with highlighted arguments}
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[scale=0.15, trim=0mm 0mm 780mm 0mm, clip]{img/ddep.pdf}
+% \caption{Some caption}
+% \label{fig:diagram_description}
+\end{figure}
 
 \nocite{*}
 {\bibliographystyle{acm}
