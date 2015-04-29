@@ -204,6 +204,7 @@ which concern a particular use or def of a register.
 
 \subsection{Data Flow Dependency}
 
+\paragraph{}
 An extension to the def-use and use-def chains was to produce the data (flow)
 dependencies of a given statement in a forward or backward direction,
 respectively. Essentially, given a register in a definition (such as a Move
@@ -240,6 +241,7 @@ The plugin will determine all preceding instructions it is dependent on:
     <(0x848C:32, 2)> R2 := R11 - 0x10:32
 \end{verbatim}
 
+\paragraph{}
 Now, we can observe the role that the stack pointer \texttt{SP} plays
 when considering \texttt{dst}. A full listing of the BIL disassembly,
 the data dependencies for \texttt{argv[1]}, and a graphical
@@ -268,13 +270,14 @@ Lastly, we observed that \texttt{strcpy} and \texttt{sprintf} may be replaced
 by the \texttt{\_\_strcpy\_chk} and \texttt{\_\_sprintf\_chk} counterparts,
 which are less interesting to analyse from a security standpoint.
 
+\paragraph{}
 Nevertheless, we implemented a partial check of this case in the plugin, and
 assumed the standpoint that any \texttt{src} address originating from the
 \texttt{ro.data} section implies a constant, fixed value. However, for this
 check we only consider the statement which loads a value immediately before the
 call, and not originating previous statements. % because memory and interfering statements
 
-\paragraph{Stack accesses within frame} 
+\paragraph{Stack accesses within the frame} 
 For this outcome, we confirm that all instructions which access elements on
 the stack, plus a fixed offset, are within the stack range of a function. We
 infer the size of the frame by considering the statements that manipulate
@@ -291,6 +294,7 @@ more sophisticated improvements.
 % ===============================================
 \section{Experimental Setup}
 
+\paragraph{}
 Our experimental setup consisted of running our plugins with BAP \texttt{0.9.6}
 \cite{bap} on a set of binaries, including GNU \texttt{Coreutils} and our
 own examples.
@@ -300,6 +304,7 @@ own examples.
 
 \subsection{Stack Check Plugin}
 
+\paragraph{}
 The stack check plugin was tested against the GNU \texttt{Coreutils} suite. We
 primarily chose the \texttt{Coreutils} suite since a) it can be compiled for
 ARM, and b) it contains numerous calls to \texttt{strcpy}, \texttt{memcpy},
@@ -313,6 +318,7 @@ concretely checked for function calls to:
   \item \texttt{memcpy}
 \end{itemize}
 
+\paragraph{}
 The plugin collected a number of statistics on the binaries, including
 the number of argument sites (that is, statements that set up registers
 before a call), the number of functions which contained calls to `dangerous'
@@ -336,23 +342,25 @@ which affect unique argument sites.
 \label{fig:coretotal}
 \end{figure}
 
+\paragraph{}
 The figures illustrate some interesting properties with respect to argument
 sites and data dependencies. Consider that each potentially dangerous function
 takes 2 or 3 parameters--of these, our data dependency plugin determined the
 maximum number of statements a single argument site statement is dependent on.
-We observe from Figure~\ref{corestats} that this could number in the hundreds,
-whereas the total number could range in the thousands (Figure ~\ref{coretotal}.
+We observe from Figure~\ref{fig:corestats} that this could number in the hundreds,
+whereas the total number could range in the thousands (Figure ~\ref{fig:coretotal}).
 The implication here is that any additional reasoning and refinement to static
 analysis methods across cases composed of sizeable dependencies need to be
 carefully considered. For instance, if we add forms of pointer analysis,
 we may speculate about the scale of complexity of memory operations for
 argument sites.
 
+\paragraph{}
 We did not observe any violations with respect to the security outcomes
 in~\S\ref{stackoutcomes}. This is perhaps unsurprising, given the ubiquitous
 use of the \texttt{Coreutils} suite. At the same time, it is difficult to
-choose a test suite which purposefully exhibits the stack properties that we check;
-see \S\ref{lessonslearned} for further discussion.
+choose a test suite which purposefully exhibits the stack properties that we
+check; see \S\ref{lessonslearned} for further discussion.
 
 \subsection{Malloc}
 % dominic todo
@@ -361,36 +369,54 @@ see \S\ref{lessonslearned} for further discussion.
 % ======================================================================
 \section{Experimental Evaluation}
 
-We were pleased with our ability to rise to the challenge of...
+\paragraph{}
+In general, we were pleased that our plugins ran successfully on our own
+example binaries as well as \texttt{Coreutils}. A key aspect of evaluating
+the success of our project is that we were able to start with a basic API in
+BAP, and after implementing a non-trivial amount of `infrastructure' code,
+arrive at three individual plugins which are able to produce security outcomes.
 
-However.
+\paragraph{}
+Our evaluation of these plugins are largely qualitative rather than
+quantitative at this stage. However, they serve as very useful data points
+toward developing more sophisticated analyses.
 
 \subsection{Malloc Check Plugin} 
 % tiffany TODO
 
 
 \subsection{Stack Check Plugin}
-% TODO urgent rijnard
 
-Neither of our checks were flagged as violations in the coreutils suite--
-thus we have security outcomes, but it's not that 'great'. 
+\paragraph{}
+As mentioned, our stack check plugin did not trigger any violations when run
+over the \texttt{Coreutils} test suite. This result was largely anticipated:
+the \texttt{Coreutils} library was chosen so that we could verify that our
+plugins run and to rule out the possibility that binaries in \texttt{Coreutils}
+exhibited rudimentary flaws. 
 
-which functions?
+\paragraph{}
+In critique of this plugin, there are a number of stack-based errors that could
+occur despite our checks. For example, consider a stack frame containing
+multiple local buffers at runtime. It is feasible that a buggy \texttt{strcpy}
+call could copy bytes beyond the boundary of a single buffer into an adjacent
+buffer, while remaining within the stack bounds. Our plugin would not detect
+this case. Consider a further case where memory accesses to the stack 
+are dependent on general purpose registers---here we cannot conclude
+whether the access is within range of the stack frame.
 
-A critical part of this project was developing an intuition for...
+\paragraph{}
+A positive side-effect of the plugin is the potential of reusability, and by
+extension, refinement toward more sophisticated analyses. Recall that this
+plugin collects and makes use of statements that an argument site depends on.
+Thus, we have the ability to store the output of our analysis without having to
+rerun the plugin. For example, we may be able to couple this data with
+pointer-analysis, and infer stack boundaries.
 
 
 \paragraph{Observations}
 
 \paragraph{Overall effectiveness}
 
-Not strictly optimization, it is a refining of an analysis.
-
-How did we respond
-
-results were not surprising.
-but promising...
-what did you learn from this experience in general?
 
 \subsection{Malloc Plugin}
 % dominic TODO
@@ -403,6 +429,8 @@ what did you learn from this experience in general?
 \subsection{Reasoning about buffer overflows}
 \paragraph{}
 % TODO urgent rijnard
+
+refinement as optimization
 
 Mention why it's difficult: libxkbfile.so.1.0.2
 
@@ -422,6 +450,21 @@ For example, data dependency instructions numbering in the hundreds.
 Rules out some possiblities. Requires continued refinement.
 
 undecidability of ptr analysis. 
+
+
+Not strictly optimization, it is a refining of an analysis.
+
+limitations highlight areas of refinement, not bad.
+
+Deductive on what we need, towards an outcome (approach seems tow ork,
+with respect to an outcome!)
+
+How did we respond
+
+results were not surprising.
+but promising...
+what did you learn from this experience in general?
+
 
 
 \section{Conclusions and Future Work}
