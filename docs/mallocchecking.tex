@@ -17,7 +17,7 @@ return value is passed to another register which in turn is checked
 instead of \texttt{r0}.
 
 Another example that we came across is from binary coreutils\_O1\_[, which is
-shown as following:
+shown below:
 
 \begin{center}
 \lstset{language=C,
@@ -26,8 +26,8 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
     d4d0:       e0800009        add     r0, r0, r9
     d4d4:       e280a002        add     sl, r0, 2
     d4d8:       e2800003        add     r0, r0, 3
-    d4dc:       ebffee80        bl      8ee4 <malloc@plt>             *
-    d4e0:       e1a08000        mov     r8, r0                        *
+    d4dc:       ebffee80        bl      8ee4 <malloc@plt>             \;
+    d4e0:       e1a08000        mov     r8, r0                        \*
     d4e4:       ea000006        b       d504 <locale_charset+0x208>
     d4e8:       e0891000        add     r1, r9, r0
     d4ec:       e081100a        add     r1, r1, sl
@@ -36,8 +36,8 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
     d4f8:       e2811003        add     r1, r1, 3
     d4fc:       ebffee4b        bl      8e30 <realloc@plt>
     d500:       e1a08000        mov     r8, r0
-    d504:       e3580000        cmp     r8, 0                        *
-    d508:       1a000005        bne     d524 <locale_charset+0x228>   *
+    d504:       e3580000        cmp     r8, 0                         \;
+    d508:       1a000005        bne     d524 <locale_charset+0x228>   \;
     d50c:       e1a00004        mov     r0, r4
 \end{lstlisting}
 \end{center}

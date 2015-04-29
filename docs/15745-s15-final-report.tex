@@ -171,11 +171,11 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
   begin(main_ENTRY)
       000082c8: 04 e0 2d e5    str lr, [sp, #-4]!
       000082cc: 20 00 a0 e3    mov r0, #0x20
-      000082d0: 49 00 00 eb    bl #0x124           ; call malloc
+      000082d0: 49 00 00 eb    bl #0x124           \; call malloc
   end(main_ENTRY)
 
   begin(main_0xc)
-      000082d4: 00 00 50 e3    cmp r0, #0x0        ; check malloc return value
+      000082d4: 00 00 50 e3    cmp r0, #0x0        \; check malloc return value
       000082d8: 02 00 00 0a    beq #0x8
   end(main_0xc)
 \end{lstlisting}
@@ -244,6 +244,7 @@ For the \texttt{dst} variable on the stack, encoded as an
 \end{verbatim}
 
 The plugin will determine all preceding instructions it is dependent on:
+
 \begin{verbatim}
     <(0x8444:32, 3)> SP := SP - 0x8:32
     <(0x8448:32, 2)> R11 := SP + 0x4:32
@@ -294,9 +295,139 @@ stack range was exceeded, this type of check forms the basis for further,
 more sophisticated improvements.
 
 \subsection{Malloc-based Security Outcomes}
-% dominic TODO
+\paragraph{}
+Another common memory safety problem is reading or writing to memory
+exceeding an allocated buffer; in certain situations, these buffer overflows
+are remotely exploitable and can be leveraged by an attacker to take control
+of a given program. As a result, we decided to implement a basic heap check
+plugin for the Binary Analysis Platform (BAP) that is capable of identifying
+and warning when static program execution violates heap safety.
 
+\paragraph{}
+Another common memory safety problem is reading or writing to memory
+The below example program, known as \texttt{doublefree}, suffers from a number of
+common memory safety problems. Among these is an out of bounds array write to
+the \texttt{array} variable, demonstrating a common off-by-one error that exceeds
+the allocated buffer size by one byte. Additionally, this program also
+exemplifies a number of other memory safety issues that we have developed BAP
+plugins to detect, including a missing return value check for the call to
+\texttt{malloc}.
 
+\begin{center}
+\lstset{language=C, label=freefree,
+caption=malloc\_free.c, breaklines=true, basicstyle=\tiny, numbers=left}
+\begin{lstlisting}
+#include <stdlib.h>
+#include <stdio.h>
+
+int main() {
+ char *array;
+ printf(“Hello World!\n”);
+
+ // Use of uninitialized memory
+ printf("Pointer: %p\n", array);
+
+ // Missing check against NULL return value
+ array = malloc(32 * sizeof(*array));
+
+ // Out of bounds array access
+ array[32] = 0;
+
+ // Double free
+ free(array);
+ free(array);
+
+ return 0;
+}
+\end{lstlisting}
+\end{center}
+
+\paragraph{}
+At the most basic level, the \texttt{heap\_check} functions by searching for calls to
+external library functions responsible for performing memory allocation such as
+\texttt{malloc}, \texttt{xmalloc}, \texttt{calloc}, etc. Then, it queries the
+BAP ABI interface to determine the number of arguments passed to the library
+function, and the register that contains the return value. Template matching is
+used to identify the specific argument that contains the allocation size, since
+the former two functions take only one argument, whereas the latter takes two
+arguments, with the allocation size passed in the second argument.
+
+\paragraph{}
+At this point, the program searches backwards through the function from the
+callsite for the most recent definition of the register that contains the
+allocation size, and analyses this definition to determine if it can statically
+identify a constant allocation size. If this is the case, then the plugin tags
+this allocation callsite with the size of the allocation, and proceeds to the
+next allocation callsite. If it cannot statically determine the allocation
+size, then the program currently tags the allocation callsite with an
+allocation size \texttt{MAX\_INT}, essentially performing widening to the supremum of the
+semilattice.
+
+\paragraph{}
+Next, after identifying and tagging all of the memory allocation callsites, the
+plugin iterates through each of the callsites, and attempts to statically
+identify all possible uses of the return value register that involve a memory
+operation (e.g. LDR and STR assembly instructions). For each of these uses, the
+plugin identifies the register that contains the memory address, searches
+backwards from the memory instruction for the most recent definition of this
+register, and statically attempts to determine the register offset from the
+allocation site. This process is similar to that performed above for
+determining the size of a memory allocation.
+
+\paragraph{}
+Finally, if the program was able to statically identify both the memory
+allocation size and the memory operation offset, the program compares the two
+values to ensure that the operation is less than the allocation size. If this
+is not the case, the program emits a warning about this unsafe memory
+operation, otherwise it labels the operation safe and proceeds to the next use.
+
+\paragraph{}
+Since the current BAP framework lacks a number of memory optimizations that
+would simplify analysis, this plugin currently only performs a basic level of
+memory operation checking. In particular, it currently only analyzes memory
+write operations, and is restricted to simple memory offset computations that
+only involve addition. As a result, it cannot perform analysis on loop
+operations or complex assembly sequences in which the pointer to the memory
+allocation is stored into memory or selectively modified through indirect
+control flow. Nevertheless, the current plugin is capable of identifying memory
+safety vulnerabilities for the example program shown above, as shown below.
+
+\begin{verbatim}
+0x8330:32: .init_proc ([832c, 8333]) -> call_weak_fn ([83dc, 83f3])
+0x83C8:32: _start ([83a0, 83cb]) -> __libc_start_main ([837c, 8387])
+0x83CC:32: _start ([83cc, 83cf]) -> abort ([8394, 839f])
+0x83F4:32: call_weak_fn ([83f4, 83f7]) -> __gmon_start__ ([8388, 8393])
+0x848C:32: __do_global_dtors_aux ([848c, 848f]) -> deregister_tm_clones ([8400, 8417])
+0x84C8:32: frame_dummy ([84c4, 84cb]) -> register_tm_clones ([8438, 8457])
+0x84E4:32: main ([84d4, 84e7]) -> puts ([8364, 836f])
+0x84F0:32: main ([84e8, 84f3]) -> printf ([834c, 8357])
+0x84F8:32: main ([84f4, 84fb]) -> malloc ([8370, 837b])
+>> 0x84F8:32: malloc (0x20:32)
+0x8518:32: main ([84fc, 851b]) -> free ([8358, 8363])
+0x8520:32: main ([851c, 8523]) -> free ([8358, 8363])
+>> 0x84FC:32: R3 = R0
+>> 0x8508:32: R3 = R3 + 0x20:32
+>> 0x8510:32: R3 + 0x0:32 <- t_1605 (UNSAFE: 0x20:32 <= 0x20:32)
+0x8560:32: __libc_csu_init ([853c, 8563]) -> .init_proc ([832c, 8333])
+\end{verbatim}
+
+The above plugin output identifies addresses at which calls were made from one
+function to another using the “->” (arrow) symbol, labeling both the source and
+destination function with their symbol name and relevant basic blocks.Then, for
+each memory allocation callsite, the program attempts to statically determine
+the allocation size, shown above with the “malloc (0x20:32)” syntax.
+Subsequently, the program attempts to statically determine the use of each
+allocation site, the offset of the memory operation, and the actual memory
+operation, which are respectively shown above by the movement of memory
+allocation pointer from “R0” (the return value of malloc)” to “R3”, the
+increment of register “R3” by “0x20:32”, and the storage of temporary variable
+“t\_1605” (containing the value 0 loaded from R2) into “R3”. At the point, the
+plugin identifies that memory operation offset exceeds the size of the
+allocation site, and emits a warning that the operation is unsafe (“UNSAFE:
+0x20L32 <= 0x20:32”).
+
+Note that the “:32” label indicates that the respective memory address is
+32-bit.
 
 
 % ===============================================
@@ -380,8 +511,67 @@ use of the \texttt{Coreutils} suite. At the same time, it is difficult to
 choose a test suite which purposefully exhibits the stack properties that we
 check; see \S\ref{lessonslearned} for further discussion.
 
-\subsection{Malloc}
-% dominic todo
+\subsection{Malloc Check Plugin}
+\paragraph{}
+For evaluation of the heap check plugin, we executed the plugin on each
+executable from the \texttt{coreutils} suite of system programs. This is composed of
+103 binaries, such as \texttt{cat}, \texttt{wc}, \texttt{who}, etc. Additionally, we compiled four
+separate versions of each plugin with different optimization levels; one at
+\texttt{O0}, one at \texttt{O1}, one at \texttt{O2}, and one at \texttt{O3}.
+
+\paragraph{}
+Of this output, our plugin identified a total of 4303 calls to preidentified
+memory allocation functions, namely ``xmalloc'', ``malloc'', ``xrealloc'',
+``realloc'', and ``calloc''. Among these, the memory allocation size was
+identified for 369 of these callsites, whereas 3934 of these callsites had an
+unknown allocation size. Drilling down further, 804 of these unknown callsites
+involved left arithmetic shifts (multiplication) on a temporary variable, which
+our plugin would likely be able to identify given some additional development
+work.  Another 426 of these unknown callsites had an allocation size that was
+loaded from memory, which would be difficult resolve without pointer analysis
+and significant additional development effort. The remaining 2707 of these
+unknown callsites were due to the allocation size value being passed through
+more than one register, which our plugin is currently unable to resolve. By
+making the callsite identification routine recursive, it is likely that we
+would be able to resolve these unknown callsites further into one of the above
+subcases.  Below is a sample of the program output demonstrating these
+different results:
+
+\begin{verbatim}
+coreutils_O3_groups.out:182:>> 0xAFFC:32: xmalloc (UNKNOWN: R1)
+coreutils_O3_head.out:17:>> 0x9C8C:32: xrealloc (UNKNOWN: t_26405 << 0x2:32)
+coreutils_O3_head.out:52:>> 0x9730:32: xmalloc (UNKNOWN: mem[SP + 0x64:32, el]:u32)
+
+coreutils_O3_who.out:335:>> 0xD2D0:32: xmalloc (0x21:32)
+\end{verbatim}
+
+\paragraph{}
+Of the above callsites with memory allocation sizes that were statically
+identified, the memory operation offset was successfully determine and
+identified as safe for five of these, as shown below. None were identified as
+unsafe, and 301 were unchecked. It is likely that more of these unchecked uses
+would be resolvable given additional development effort, since the current
+implementation is only capable of resolving additive (and not negative,
+multiplicative, etc) offsets to the allocation site. Note that of the five
+memory operations identified as safe, all were in the \texttt{O0} version of the
+respective \texttt{coreutils} binary, indicating that higher optimization levels are
+generating more complex code that currently cannot be resolved.
+
+\small
+\begin{verbatim}
+coreutils_O0_chmod.out:194:>> 0xAF14:32: R3 + 0x0:32 <- t_67547 (UNCHECKED)
+coreutils_O0_chmod.out:196:>> 0xAF20:32: R3 + 0x1:32 <- t_67551 (UNCHECKED)
+coreutils_O0_chmod.out:198:>> 0xAF2C:32: R3 + 0x4:32 <- R2 (UNCHECKED)
+coreutils_O0_chmod.out:200:>> 0xAF38:32: R3 + 0x8:32 <- R2 (UNCHECKED)
+coreutils_O0_chmod.out:202:>> 0xAF44:32: R3 + 0xC:32 <- R2 (UNCHECKED)
+
+coreutils_O0_chmod.out:204:>> 0xAF54:32: R3 + 0x1:32 <- t_67567 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_install.out:1515:>> 0x179BC:32: R3 + 0x1:32 <- t_186264 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_mkdir.out:176:>> 0xA880:32: R3 + 0x1:32 <- t_36422 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_mkfifo.out:109:>> 0x9B14:32: R3 + 0x1:32 <- t_25151 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_mknod.out:125:>> 0xA2B0:32: R3 + 0x1:32 <- t_31175 (SAFE: 0x20:32 > 0x10:32)
+\end{verbatim}
+\normalsize
 
 
 % ======================================================================
