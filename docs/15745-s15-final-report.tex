@@ -392,7 +392,13 @@ quantitative at this stage. However, they serve as very useful data points
 toward developing more sophisticated analyses.
 
 \subsection{Malloc Check Plugin}
-So far we applied our checking on 129 binaries from \texttt{Coreutils}. The
+
+\begin{figure}[h!]
+      \caption{Malloc checking result in coreutils binaries.}
+        \centering
+    \includegraphics[width=0.8\textwidth]{malloccheckplot}
+\end{figure}
+So far we applied our checking on 128 binaries from \texttt{Coreutils}. The
 result showed that we found 15 places that \texttt{malloc} is not checked
 according to our rules.
 \begin{center}
@@ -474,7 +480,7 @@ due to containing a \texttt{strcpy(buf,"none")}~\cite{xorg} call. However, this 
 to compile to the \texttt{LDMIA.W} instructions mentioned before. This example
 principally highlights the difficulty in choosing candidates for testing.
 
-\paragraph{} 
+\paragraph{}
 One surprising result was the great number of statements (over
 200) that some argument sites were found to depend on in \texttt{Coreutils}
 binaries. It was also the case that this result was exhibited inside large
@@ -507,9 +513,9 @@ further complexities.
 We will focus specifically on refining the sophistication of our analyses
 to handle broader cases as outlined in our discussions. A major benefit of
 identifying the limitations in our approch and evaluation is that it
-immediately highlights areas of refinement. 
+immediately highlights areas of refinement.
 
-\paragraph{} 
+\paragraph{}
 It has been a promising exercise to prototype and test our
 analyses within the context of this project. We consider the experience and
 insights gained throughout to be particularly valuable for performing continued
