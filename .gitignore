@@ -1,5 +1,6 @@
 _build/
 *.aux
+*.bbl
 *.blg
 *.log
 *.fdb_latexmk
