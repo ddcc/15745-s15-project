@@ -32,7 +32,7 @@ buffer overflows, double frees, and uninitialized variables. In particular, we
 define \emph{Security Outcomes} with respect to certain memory-safety errors,
 and subsequently implement and test static analyses that yield these outcomes.
 All analyses were written against our group's Binary Analysis Platform
-(BAP\footnote{\url{https://github.com/BinaryAnalysisPlatform/bap}})~\cite{bap, brumley2011bap},
+(BAP)\footnote{\url{https://github.com/BinaryAnalysisPlatform/bap}}~\cite{bap, brumley2011bap},
 and are available online \footnote{\url{https://github.com/ddcc/15745-s15-project}}.
 
 \paragraph{}
@@ -49,7 +49,7 @@ we have much to say towards lessons learned in \S\ref{lessonslearned}.
 \label{approachoverview}
 
 \paragraph{}
-At the outset of this project, we planned to implement and test the static
+Initially, we planned to implement and test the following static
 analyses with respect to our original proposal:
 
 \begin{enumerate}
@@ -60,7 +60,7 @@ analyses with respect to our original proposal:
 \end{enumerate}
 
 \paragraph{}
-Equipped with the knowledge of data flow dependency between instructions (1),
+Equipped with the knowledge of data flow dependencies between instructions (1),
 we determined to reason about various properties of typical vulnerabilities
 that we could check (2-4). For example, we might like to follow how arguments
 to a `strcpy` call are influenced by previous instructions as a function of
@@ -71,13 +71,13 @@ the stack register.
 \paragraph{}
 Engler et. al. found numerous bugs with system-specific static analyses,
 implemented by way of a meta-compilation language for the \texttt{gcc} compiler
-\cite{dawson, dawson2}. Analyses are composed in the form of correctness rules
-and automatic inference of rules form source code. Memory errors that are
-checked include null pointer bugs, not checking allocation results, and uses of
-freed pointers. This relates to our goal in that we would ideally like to perform
-similar checks, albeit at the level of complexity of binary code. Whereas
+\cite{dawson, dawson2}. Analyses are composed in the form of correctness rules,
+and these rules can be automatically inferred from source code. Memory errors that are
+checked include NULL pointer bugs, failure to verify return value of allocations, and uses of
+already-freed pointers. Similarly, we would ideally like to perform comparable
+memory safety analyses, except at the level of binary code. Whereas
 Engler's work matured into a generic platform for specifying analyses, we must
-start first with an ad-hoc approach to gain insight and familiarity in the
+start first with an ad-hoc approach to gain insight and familiarity with the
 problem domain presented by binaries.
 
 The Jakstab framework~\cite{kinder2008jakstab} provides a platform for
@@ -95,7 +95,7 @@ Our key technical contributions are as follows:
   \item A dataflow analysis framework for BAP.
   \item General plugins for BAP that deliver
     \begin{enumerate}
-      \item reaching definitions and
+      \item reaching definitions, and
       \item data flow dependency resolution (use-def and def-use chains).
       \item registers corresponding to function call arguments and returns,
             according to the ARM ABI.
@@ -105,7 +105,7 @@ Our key technical contributions are as follows:
       \item whether memory allocation checks are performed on `memcpy`,
       \item whether calls such as strcpy are safe from buffer overflows under
         specific conditions, and
-      \item whether malloc calls... % dominic?
+      \item whether access to heap-allocated memory is in-bounds.
     \end{enumerate}
   \item Results of testing the aforementioned plugins on the \texttt{GNU Coreutils}\footnote{\url{https://www.gnu.org/software/coreutils/}}
     software suite.
@@ -115,26 +115,24 @@ Our key technical contributions are as follows:
 
 \paragraph{}
 Due to the exploratory nature of this project on the binary level, we
-concentrate much of our efforts on looking at viable approaches of analysis,
-rather than optimizing properties of the analysis or testing against measurable
-benchmarks. For this reason, it doesn't come as a surprise that our evaluation
-section may be less expressive than our approach and ``lessons learned''.
-
+concentrated much of our efforts on examining various analysis approaches,
+rather than optimizing or improving the scope of a specific analysis.
+benchmarks.
 \section{Approach}
 
 \subsection{Overview}
 \paragraph{}
-Here we discuss our approach toward ensuring security properties as it evolved
-over the course of the project. Initially, we determined to reason about each
+Here we discuss our approach towards ensuring security properties as it evolved
+over the course of the project. Initially, we decided to reason about each
 of the cases in \S\ref{approachoverview} that relate to vulnerabilities
-(2-4). To do so, we needed some basic infrastructure (1) which we describe
-first. Thereafter, we describe our specific approaches to performing
-security analyses with respect to specific \emph{Security Outcomes}.
+(2-4). In order to do so, we needed some basic infrastructure (1), which will be
+described shortly. Afterwards, we describe our specific approach to performing
+security analyses with respect to our \emph{Security Outcomes}.
 
 \subsection{The Case for Reaching Definitions}
 
 \paragraph{}
-For example, consider the following code, where we desire to verify
+For example, consider the following code, for which we desire to verify
 that the return value of \texttt{malloc} is checked:
 
 \begin{center}
@@ -145,9 +143,7 @@ caption=malloc.c, breaklines=true, basicstyle=\tiny, numbers=left}
 #include <stdio.h>
 
 int main() {
-  // Uninitialized variable
   char *array = 0;
-
 
   array = malloc(32 * sizeof(*array));
 
@@ -185,16 +181,16 @@ caption=Malloc disassembly, breaklines=true, basicstyle=\tiny, numbers=none}
 
 \paragraph{}
 We would like to confirm that a check takes place after the call to malloc;
-i.e., we would check for the presence of the \texttt{cmp} instruction and the
+i.e.; we want to check for the presence of a \texttt{cmp} instruction and the
 operand \texttt{r0} in \texttt{main\_0xc}.
 
 \paragraph{}
-However, it may easily be the case that the contents of \texttt{r0} are first
-moved to another register, \texttt{r3}, which is subsequently checked by a
-\texttt{cmp} instruction. In order to verify the buggy condition that the malloc
-return value is never checked, we must verify that any flow of this data from
-\texttt{r0} to other registers are also not checked. To obtain the statements
-where \texttt{r0} data flows to, we make use of def-use chains. For the
+However, it may be the case that the contents of \texttt{r0} are first
+moved to another register, \texttt{r3}, which is subsequently checked by the
+\texttt{cmp} instruction. In order to detect an unchecked \texttt{malloc}
+return value, we must verify that there exists a flow of data from
+\texttt{r0} to other registers that is also unchecked. To obtain the statements
+where data from \texttt{r0} flows to, we make use of def-use chains. For the
 definition of \texttt{r0} in the BIL IR, we check all uses of \texttt{r0} and
 transitively look up the def-use chains for further registers, such as
 \texttt{r3}, which the value in \texttt{r0} flows to. On the final set of
@@ -202,13 +198,13 @@ instructions, we verify that the data is subject to a \texttt{cmp} instruction.
 
 \paragraph{}
 This example demonstrates the need for def-use chains; our stack and heap based
-analyses in turn also require use-def chains. Due to retreating edges in the
+analyses in turn also require use-def chains. Due to backwards edges in the
 CFG, it is difficult to produce def-use chains given a single instruction. For
 this reason we first implemented a dataflow framework and a
-reaching-definitions pass. An exhaustive description of the
-implementation details for this framework, as implemented in OCaml for
+reaching-definitions pass. A more comprehensive description of the
+dataflow framework implementation, as written in OCaml for
 BAP, may be viewed in Appendix~\ref{appa1}.
-From the reaching definitions, we generate def-use
+From the reaching definitions results, we generate def-use
 and use-def chains as necessary---e.g., we filter on those reaching definitions
 which concern a particular use or def of a register.
 
@@ -217,7 +213,7 @@ which concern a particular use or def of a register.
 \paragraph{}
 An extension to the def-use and use-def chains was to produce the data (flow)
 dependencies of a given statement in a forward or backward direction,
-respectively. Essentially, given a register in a definition (such as a Move
+respectively. Essentially, given a register in a definition (such as a \texttt{mov}
 instruction in the BIL IR), we can produce a set of all instructions that are
 determined to transitively affect its value. We implement this
 by way of a data dependency plugin for BAP. Consider the arguments to the
@@ -240,32 +236,35 @@ int main(int argc, char** argv) {
 For the \texttt{dst} variable on the stack, encoded as an
 \texttt{<address,statement>} pair, we have:
 
+\small
 \begin{verbatim}
     <(0x8490:32, 0)> R0 := R2
 \end{verbatim}
+\normalsize
 
 The plugin will determine all preceding instructions it is dependent on:
 
+\small
 \begin{verbatim}
     <(0x8444:32, 3)> SP := SP - 0x8:32
     <(0x8448:32, 2)> R11 := SP + 0x4:32
     <(0x848C:32, 2)> R2 := R11 - 0x10:32
 \end{verbatim}
+\normalsize
 
 \paragraph{}
 Now, we can observe the role that the stack pointer \texttt{SP} plays
 when considering \texttt{dst}. A full listing of the BIL disassembly,
 the data dependencies for \texttt{argv[1]}, and a graphical
-output may be viewed in
-the Appendix~\ref{appa2}.
+output may be viewed in the Appendix~\ref{appa2}.
 
-\subsection{Malloc Checking Security Outcomes}
+\subsection{\texttt{malloc} Checking Security Outcomes}
 \input{mallocchecking}
 \subsection{Stack-based Security Outcomes}
 \label{stackoutcomes}
 
 \paragraph{}
-A number of unfruitful approaches documented in~\S\ref{lessonslearned} lead us
+A number of unfruitful approaches as documented in~\S\ref{lessonslearned} lead us
 to opting for an approach where we identify two properties which are important
 from a security perspective, without inferring sizes of stack-based buffers.
 
@@ -278,7 +277,7 @@ optimizations \texttt{strcpy} (as well as \texttt{sprintf} calls) would be
 compiled to a \texttt{LDMIA.W} ARM instruction which directly copies memory.
 Lastly, we observed that \texttt{strcpy} and \texttt{sprintf} may be replaced
 by the \texttt{\_\_strcpy\_chk} and \texttt{\_\_sprintf\_chk} counterparts,
-which are less interesting to analyse from a security standpoint.
+which are less interesting to analyze from a security standpoint.
 
 \paragraph{}
 Nevertheless, we implemented a partial check of this case in the plugin, and
@@ -295,7 +294,7 @@ SP in the function prologue. While we didn't observe any cases where the
 stack range was exceeded, this type of check forms the basis for further,
 more sophisticated improvements.
 
-\subsection{Malloc-based Security Outcomes}
+\subsection{Heap-based Security Outcomes}
 \paragraph{}
 Another common memory safety problem is reading or writing to memory
 exceeding an allocated buffer; in certain situations, these buffer overflows
@@ -344,7 +343,7 @@ int main() {
 \end{center}
 
 \paragraph{}
-At the most basic level, the \texttt{heap\_check} functions by searching for calls to
+At the most basic level, the \texttt{heap\_check} plugin functions by searching for calls to
 external library functions responsible for performing memory allocation such as
 \texttt{malloc}, \texttt{xmalloc}, \texttt{calloc}, etc. Then, it queries the
 BAP ABI interface to determine the number of arguments passed to the library
@@ -393,6 +392,8 @@ allocation is stored into memory or selectively modified through indirect
 control flow. Nevertheless, the current plugin is capable of identifying memory
 safety vulnerabilities for the example program shown above, as shown below.
 
+
+\small
 \begin{verbatim}
 0x8330:32: .init_proc ([832c, 8333]) -> call_weak_fn ([83dc, 83f3])
 0x83C8:32: _start ([83a0, 83cb]) -> __libc_start_main ([837c, 8387])
@@ -411,23 +412,24 @@ safety vulnerabilities for the example program shown above, as shown below.
 >> 0x8510:32: R3 + 0x0:32 <- t_1605 (UNSAFE: 0x20:32 <= 0x20:32)
 0x8560:32: __libc_csu_init ([853c, 8563]) -> .init_proc ([832c, 8333])
 \end{verbatim}
+\normalsize
 
 The above plugin output identifies addresses at which calls were made from one
-function to another using the “->” (arrow) symbol, labeling both the source and
-destination function with their symbol name and relevant basic blocks.Then, for
+function to another using the \texttt{->} (arrow) symbol, labeling both the source and
+destination function with their symbol name and relevant basic blocks. Then, for
 each memory allocation callsite, the program attempts to statically determine
-the allocation size, shown above with the “malloc (0x20:32)” syntax.
+the allocation size, shown above with the \texttt{malloc (0x20:32)} syntax.
 Subsequently, the program attempts to statically determine the use of each
 allocation site, the offset of the memory operation, and the actual memory
 operation, which are respectively shown above by the movement of memory
-allocation pointer from “R0” (the return value of malloc)” to “R3”, the
-increment of register “R3” by “0x20:32”, and the storage of temporary variable
-“t\_1605” (containing the value 0 loaded from R2) into “R3”. At the point, the
+allocation pointer from \texttt{R0} (the return value of \texttt{malloc})” to \texttt{R3}, the
+increment of register \texttt{R3} by \texttt{0x20:32}, and the storage of temporary variable
+\texttt{t\_1605} (containing the value \texttt{0} loaded from \texttt{R2}) into \texttt{R3}. At the point, the
 plugin identifies that memory operation offset exceeds the size of the
-allocation site, and emits a warning that the operation is unsafe (“UNSAFE:
-0x20L32 <= 0x20:32”).
+allocation site, and emits a warning that the operation is unsafe (\texttt{UNSAFE:
+0x20L32 <= 0x20:32}).
 
-Note that the “:32” label indicates that the respective memory address is
+Note that the \texttt{:32} label indicates that the respective memory address is
 32-bit.
 
 
@@ -458,7 +460,7 @@ In this experiment, we checked the following property for all arm
 The stack check plugin was tested against the GNU \texttt{Coreutils} suite. We
 primarily chose the \texttt{Coreutils} suite since a) it can be compiled for
 ARM, and b) it contains numerous calls to \texttt{strcpy}, \texttt{memcpy},
-\texttt{malloc}, and so forth.  The stack check plugin, while configurable,
+\texttt{malloc}, and so forth. The stack check plugin, while configurable,
 concretely checked for function calls to:
 
 \begin{itemize}
@@ -512,12 +514,96 @@ use of the \texttt{Coreutils} suite. At the same time, it is difficult to
 choose a test suite which purposefully exhibits the stack properties that we
 check; see \S\ref{lessonslearned} for further discussion.
 
-\subsection{Malloc Check Plugin}
+\subsection{Heap Check Plugin}
 \paragraph{}
+For evaluation of the heap check plugin, we executed the plugin on each
+executable from the \texttt{coreutils} suite of system programs. This is
+composed of 103 binaries, such as \texttt{cat}, \texttt{wc}, \texttt{who}, etc.
+Additionally, we compiled four separate versions of each plugin with different
+optimization levels; one at \texttt{O0}, one at \texttt{O1}, one at
+\texttt{O2}, and one at \texttt{O3}.
+
+% ======================================================================
+\section{Experimental Evaluation}
+
+\paragraph{}
+In general, we were pleased that our plugins ran successfully on our own
+example binaries as well as \texttt{Coreutils}. A key aspect of evaluating
+the success of our project is that we were able to start with a basic API in
+BAP, and after implementing a non-trivial amount of `infrastructure' code,
+arrive at three individual plugins which are able to produce security outcomes.
+
+\paragraph{}
+Our evaluation of these plugins are largely qualitative rather than
+quantitative at this stage. However, they serve as very useful data points
+toward developing more sophisticated analyses.
+
+\subsection{Malloc Check Plugin}
+
+\begin{figure}[h!]
+      \caption{Malloc checking result in coreutils binaries.}
+        \centering
+    \includegraphics[width=0.8\textwidth]{malloccheckplot}
+\end{figure}
+So far, we applied our checking on 128 binaries from \texttt{Coreutils}. The
+result showed that we found 15 places that \texttt{malloc} is not checked
+according to our rules.
+\begin{center}
+\lstset{language=C, label=strcpy_asm,
+caption=Function re\_node\_set\_alloc, breaklines=true, basicstyle=\tiny, numbers=none}
+\begin{lstlisting}
+0000f910 <re_node_set_alloc>:
+    f910:       e92d4010        push    {r4, lr}
+    f914:       e1a04000        mov     r4, r0
+    f918:       e5801000        str     r1, [r0]
+    f91c:       e3a03000        mov     r3, 0
+    f920:       e5803004        str     r3, [r0, 4]
+    f924:       e1a00101        lsl     r0, r1, 2
+    f928:       ebffe6f6        bl      9508 <malloc@plt>
+    f92c:       e5840008        str     r0, [r4, 8]
+    f930:       e3500000        cmp     r0, 0
+    f934:       03a0000c        moveq   r0, 12
+    f938:       13a00000        movne   r0, 0
+    f93c:       e8bd8010        pop     {r4, pc}
+\end{lstlisting}
+\end{center}
+For example, we found that although the function \texttt{re\_node\_set\_alloc}
+compares the return value of \texttt{malloc}, it does not handle the case
+where the return value is 0. Instead, the return value will be stored on the
+stack and overwrite another value.
+
+\subsection{Stack Check Plugin}
+
+\paragraph{}
+As mentioned, our stack check plugin did not trigger any violations when run
+over the \texttt{Coreutils} test suite. This result was largely anticipated:
+the \texttt{Coreutils} library was chosen so that we could verify that our
+plugins run and to rule out the possibility that binaries in \texttt{Coreutils}
+exhibited rudimentary flaws.
+
+\paragraph{}
+In critique of this plugin, there are a number of stack-based errors that could
+occur despite our checks. For example, consider a stack frame containing
+multiple local buffers at runtime. It is feasible that a buggy \texttt{strcpy}
+call could copy bytes beyond the boundary of a single buffer into an adjacent
+buffer, while remaining within the stack bounds. Our plugin would not detect
+this case. Consider a further case where memory accesses to the stack
+are dependent on general purpose registers---here we cannot conclude
+whether the access is within range of the stack frame.
+
+\paragraph{}
+A positive side-effect of the plugin is the potential of reusability, and by
+extension, refinement toward more sophisticated analyses. Recall that this
+plugin collects and makes use of statements that an argument site depends on.
+Thus, we have the ability to store the output of our analysis without having to
+rerun the plugin. For example, we may be able to couple this data with
+pointer-analysis, and infer stack boundaries.
+
+\subsection{Heap Check Plugin}
 \paragraph{}
 Of this output, our plugin identified a total of 4303 calls to preidentified
-memory allocation functions, namely ``xmalloc'', ``malloc'', ``xrealloc'',
-``realloc'', and ``calloc''. Among these, the memory allocation size was
+memory allocation functions, namely \texttt{xmalloc}, \texttt{malloc}, \texttt{xrealloc},
+\texttt{realloc}, and \texttt{calloc}. Among these, the memory allocation size was
 identified for 369 of these callsites, whereas 3934 of these callsites had an
 unknown allocation size. Drilling down further, 804 of these unknown callsites
 involved left arithmetic shifts (multiplication) on a temporary variable, which
@@ -532,6 +618,8 @@ would be able to resolve these unknown callsites further into one of the above
 subcases.  Below is a sample of the program output demonstrating these
 different results:
 
+
+\small
 \begin{verbatim}
 coreutils_O3_groups.out:182:>> 0xAFFC:32: xmalloc (UNKNOWN: R1)
 coreutils_O3_head.out:17:>> 0x9C8C:32: xrealloc (UNKNOWN: t_26405 << 0x2:32)
@@ -539,6 +627,7 @@ coreutils_O3_head.out:52:>> 0x9730:32: xmalloc (UNKNOWN: mem[SP + 0x64:32, el]:u
 
 coreutils_O3_who.out:335:>> 0xD2D0:32: xmalloc (0x21:32)
 \end{verbatim}
+\normalsize
 
 \paragraph{}
 Of the above callsites with memory allocation sizes that were statically
@@ -568,92 +657,9 @@ coreutils_O0_mknod.out:125:>> 0xA2B0:32: R3 + 0x1:32 <- t_31175 (SAFE: 0x20:32 >
 \end{verbatim}
 \normalsize
 
-
-% ======================================================================
-\section{Experimental Evaluation}
-
-\paragraph{}
-In general, we were pleased that our plugins ran successfully on our own
-example binaries as well as \texttt{Coreutils}. A key aspect of evaluating
-the success of our project is that we were able to start with a basic API in
-BAP, and after implementing a non-trivial amount of `infrastructure' code,
-arrive at three individual plugins which are able to produce security outcomes.
-
-\paragraph{}
-Our evaluation of these plugins are largely qualitative rather than
-quantitative at this stage. However, they serve as very useful data points
-toward developing more sophisticated analyses.
-
-\subsection{Malloc Check Plugin}
-So far we applied our checking on 129 binaries from \texttt{Coreutils}. The
-result showed that we found 15 places that \texttt{malloc} is not checked
-according to our rules.
-\begin{center}
-\lstset{language=C, label=strcpy_asm,
-caption=Function re\_node\_set\_alloc, breaklines=true, basicstyle=\tiny, numbers=none}
-\begin{lstlisting}
-0000f910 <re_node_set_alloc>:
-    f910:       e92d4010        push    {r4, lr}
-    f914:       e1a04000        mov     r4, r0
-    f918:       e5801000        str     r1, [r0]
-    f91c:       e3a03000        mov     r3, 0
-    f920:       e5803004        str     r3, [r0, 4]
-    f924:       e1a00101        lsl     r0, r1, 2
-    f928:       ebffe6f6        bl      9508 <malloc@plt>
-    f92c:       e5840008        str     r0, [r4, 8]
-    f930:       e3500000        cmp     r0, 0
-    f934:       03a0000c        moveq   r0, 12
-    f938:       13a00000        movne   r0, 0
-    f93c:       e8bd8010        pop     {r4, pc}
-\end{lstlisting}
-\end{center}
-For example, we found that although function \texttt{re\_node\_set\_alloc}
-compares the return value of \texttt{malloc}, it does not deal with the case
-when the return value is 0. Instead, the return value will be stored to the
-stack and overwritten to other value.
-
-\subsection{Stack Check Plugin}
-
-\paragraph{}
-As mentioned, our stack check plugin did not trigger any violations when run
-over the \texttt{Coreutils} test suite. This result was largely anticipated:
-the \texttt{Coreutils} library was chosen so that we could verify that our
-plugins run and to rule out the possibility that binaries in \texttt{Coreutils}
-exhibited rudimentary flaws.
-
-\paragraph{}
-In critique of this plugin, there are a number of stack-based errors that could
-occur despite our checks. For example, consider a stack frame containing
-multiple local buffers at runtime. It is feasible that a buggy \texttt{strcpy}
-call could copy bytes beyond the boundary of a single buffer into an adjacent
-buffer, while remaining within the stack bounds. Our plugin would not detect
-this case. Consider a further case where memory accesses to the stack
-are dependent on general purpose registers---here we cannot conclude
-whether the access is within range of the stack frame.
-
-\paragraph{}
-A positive side-effect of the plugin is the potential of reusability, and by
-extension, refinement toward more sophisticated analyses. Recall that this
-plugin collects and makes use of statements that an argument site depends on.
-Thus, we have the ability to store the output of our analysis without having to
-rerun the plugin. For example, we may be able to couple this data with
-pointer-analysis, and infer stack boundaries.
-
-\subsection{Malloc Plugin}
-\paragraph{}
-For evaluation of the heap check plugin, we executed the plugin on each
-executable from the \texttt{coreutils} suite of system programs. This is
-composed of 103 binaries, such as \texttt{cat}, \texttt{wc}, \texttt{who}, etc.
-Additionally, we compiled four separate versions of each plugin with different
-optimization levels; one at \texttt{O0}, one at \texttt{O1}, one at
-\texttt{O2}, and one at \texttt{O3}.
-
-
-
 % =====================================================================
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
-%TODO tiffany, dominic
 
 There were a number of surprises and lessons learned throughout this project.
 
@@ -750,7 +756,7 @@ further complexities.
 \paragraph{}
 We will focus specifically on refining the sophistication of our analyses
 to handle broader cases as outlined in our discussions. A major benefit of
-identifying the limitations in our approch and evaluation is that it
+identifying the limitations in our approach and evaluation is that it
 immediately highlights areas of refinement. The additional goals beyond 100\%
 in our original proposal are all candidates for formulating future analyses.
 In summary, these are:
@@ -817,17 +823,17 @@ the Bitvector, reducing performance and flexibility of analysis.
 
 \paragraph{}
 In particular, our custom implementation defines a Bitvector record (datatype)
-composed of three subvalues: (1) infinite: a boolean value that determines
-whether the bitvector is of infinite size, (2) value: a boolean value that
-determines whether the bits of the bitvector are 0 or 1, and (3) indexes: a set
+composed of three subvalues: (1) \texttt{infinite}: a boolean value that determines
+whether the bitvector is of infinite size, (2) \texttt{value}: a boolean value that
+determines whether the bits of the bitvector are 0 or 1, and (3) \texttt{indexes}: a set
 of integers that identifies indexes of the bitvector that are set to value. As
 a result, this implementation allows for the empty and universal sets to be
-respectively identified by the following simple Bitvector values: \{infinite:
-true, value: false (0), indexes: \{\}\} and \{infinite: true, value: true (1),
-indexes: \{\}\}. Standard Bitvector operations, such as union, intersection, and
+respectively identified by the following simple Bitvector values: \texttt{\{infinite:
+true, value: false (0), indexes: \{\}\}} and \texttt{\{infinite: true, value: true (1),
+indexes: \{\}\}}. Standard Bitvector operations, such as union, intersection, and
 difference, are defined using these primitives. As an example, consider an
-arbitrary Bitvector a, and the following operations: empty - a = empty, a -
-empty = a, universal - a = not a, a - universal = empty. These operations are
+arbitrary Bitvector a, and the following operations: \texttt{empty - a = empty, a -
+empty = a, universal - a = not a, a - universal = empty}. These operations are
 straightforward, even for the relative complement of the universal set with the
 arbitrary Bitvector; this can be represented by simply toggling the value
 attribute from true to false or vice-versa.
@@ -878,7 +884,7 @@ lattice values.
   mem := mem         with [R11 + 0xFFFFFFE4:32, el]:u32 <- R1
   R3 := R11 - 0x10:32
   t_447 := 0x10:32
-  s_446 := R11
+  s_446 := R11g
   R2 := 0x0:32
   mem := mem         with [R3 + 0x0:32, el]:u32 <- R2
   R3 := R3 + 0x4:32
