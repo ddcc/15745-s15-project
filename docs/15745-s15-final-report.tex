@@ -254,7 +254,7 @@ when considering \texttt{dst}. A full listing of the BIL disassembly,
 the data dependencies for \texttt{argv[1]}, and a graphical
 output may be viewed in the Appendix~\ref{appa2}.
 
-\subsection{Malloc Checking Security Outcomes}
+\subsection{\texttt{malloc} Checking Security Outcomes}
 \input{mallocchecking}
 \subsection{Stack-based Security Outcomes}
 \label{stackoutcomes}
@@ -290,7 +290,7 @@ SP in the function prologue. While we didn't observe any cases where the
 stack range was exceeded, this type of check forms the basis for further,
 more sophisticated improvements.
 
-\subsection{Malloc-based Security Outcomes}
+\subsection{Heap-based Security Outcomes}
 \paragraph{}
 Another common memory safety problem is reading or writing to memory
 exceeding an allocated buffer; in certain situations, these buffer overflows
@@ -339,7 +339,7 @@ int main() {
 \end{center}
 
 \paragraph{}
-At the most basic level, the \texttt{heap\_check} functions by searching for calls to
+At the most basic level, the \texttt{heap\_check} plugin functions by searching for calls to
 external library functions responsible for performing memory allocation such as
 \texttt{malloc}, \texttt{xmalloc}, \texttt{calloc}, etc. Then, it queries the
 BAP ABI interface to determine the number of arguments passed to the library
@@ -408,21 +408,21 @@ safety vulnerabilities for the example program shown above, as shown below.
 \end{verbatim}
 
 The above plugin output identifies addresses at which calls were made from one
-function to another using the “->” (arrow) symbol, labeling both the source and
-destination function with their symbol name and relevant basic blocks.Then, for
+function to another using the \texttt{->} (arrow) symbol, labeling both the source and
+destination function with their symbol name and relevant basic blocks. Then, for
 each memory allocation callsite, the program attempts to statically determine
-the allocation size, shown above with the “malloc (0x20:32)” syntax.
+the allocation size, shown above with the \texttt{malloc (0x20:32)} syntax.
 Subsequently, the program attempts to statically determine the use of each
 allocation site, the offset of the memory operation, and the actual memory
 operation, which are respectively shown above by the movement of memory
-allocation pointer from “R0” (the return value of malloc)” to “R3”, the
-increment of register “R3” by “0x20:32”, and the storage of temporary variable
-“t\_1605” (containing the value 0 loaded from R2) into “R3”. At the point, the
+allocation pointer from \texttt{R0} (the return value of \texttt{malloc})” to \texttt{R3}, the
+increment of register \texttt{R3} by \texttt{0x20:32}, and the storage of temporary variable
+\texttt{t\_1605} (containing the value \texttt{0} loaded from \texttt{R2}) into \texttt{R3}. At the point, the
 plugin identifies that memory operation offset exceeds the size of the
-allocation site, and emits a warning that the operation is unsafe (“UNSAFE:
-0x20L32 <= 0x20:32”).
+allocation site, and emits a warning that the operation is unsafe (\texttt{UNSAFE:
+0x20L32 <= 0x20:32}).
 
-Note that the “:32” label indicates that the respective memory address is
+Note that the \texttt{:32} label indicates that the respective memory address is
 32-bit.
 
 
@@ -453,7 +453,7 @@ In this experiment, we checked the following property for all arm
 The stack check plugin was tested against the GNU \texttt{Coreutils} suite. We
 primarily chose the \texttt{Coreutils} suite since a) it can be compiled for
 ARM, and b) it contains numerous calls to \texttt{strcpy}, \texttt{memcpy},
-\texttt{malloc}, and so forth.  The stack check plugin, while configurable,
+\texttt{malloc}, and so forth. The stack check plugin, while configurable,
 concretely checked for function calls to:
 
 \begin{itemize}
@@ -507,67 +507,13 @@ use of the \texttt{Coreutils} suite. At the same time, it is difficult to
 choose a test suite which purposefully exhibits the stack properties that we
 check; see \S\ref{lessonslearned} for further discussion.
 
-\subsection{Malloc Check Plugin}
+\subsection{Heap Check Plugin}
 \paragraph{}
 For evaluation of the heap check plugin, we executed the plugin on each
 executable from the \texttt{coreutils} suite of system programs. This is composed of
 103 binaries, such as \texttt{cat}, \texttt{wc}, \texttt{who}, etc. Additionally, we compiled four
 separate versions of each plugin with different optimization levels; one at
 \texttt{O0}, one at \texttt{O1}, one at \texttt{O2}, and one at \texttt{O3}.
-
-\paragraph{}
-Of this output, our plugin identified a total of 4303 calls to preidentified
-memory allocation functions, namely ``xmalloc'', ``malloc'', ``xrealloc'',
-``realloc'', and ``calloc''. Among these, the memory allocation size was
-identified for 369 of these callsites, whereas 3934 of these callsites had an
-unknown allocation size. Drilling down further, 804 of these unknown callsites
-involved left arithmetic shifts (multiplication) on a temporary variable, which
-our plugin would likely be able to identify given some additional development
-work.  Another 426 of these unknown callsites had an allocation size that was
-loaded from memory, which would be difficult resolve without pointer analysis
-and significant additional development effort. The remaining 2707 of these
-unknown callsites were due to the allocation size value being passed through
-more than one register, which our plugin is currently unable to resolve. By
-making the callsite identification routine recursive, it is likely that we
-would be able to resolve these unknown callsites further into one of the above
-subcases.  Below is a sample of the program output demonstrating these
-different results:
-
-\begin{verbatim}
-coreutils_O3_groups.out:182:>> 0xAFFC:32: xmalloc (UNKNOWN: R1)
-coreutils_O3_head.out:17:>> 0x9C8C:32: xrealloc (UNKNOWN: t_26405 << 0x2:32)
-coreutils_O3_head.out:52:>> 0x9730:32: xmalloc (UNKNOWN: mem[SP + 0x64:32, el]:u32)
-
-coreutils_O3_who.out:335:>> 0xD2D0:32: xmalloc (0x21:32)
-\end{verbatim}
-
-\paragraph{}
-Of the above callsites with memory allocation sizes that were statically
-identified, the memory operation offset was successfully determine and
-identified as safe for five of these, as shown below. None were identified as
-unsafe, and 301 were unchecked. It is likely that more of these unchecked uses
-would be resolvable given additional development effort, since the current
-implementation is only capable of resolving additive (and not negative,
-multiplicative, etc) offsets to the allocation site. Note that of the five
-memory operations identified as safe, all were in the \texttt{O0} version of the
-respective \texttt{coreutils} binary, indicating that higher optimization levels are
-generating more complex code that currently cannot be resolved.
-
-\small
-\begin{verbatim}
-coreutils_O0_chmod.out:194:>> 0xAF14:32: R3 + 0x0:32 <- t_67547 (UNCHECKED)
-coreutils_O0_chmod.out:196:>> 0xAF20:32: R3 + 0x1:32 <- t_67551 (UNCHECKED)
-coreutils_O0_chmod.out:198:>> 0xAF2C:32: R3 + 0x4:32 <- R2 (UNCHECKED)
-coreutils_O0_chmod.out:200:>> 0xAF38:32: R3 + 0x8:32 <- R2 (UNCHECKED)
-coreutils_O0_chmod.out:202:>> 0xAF44:32: R3 + 0xC:32 <- R2 (UNCHECKED)
-
-coreutils_O0_chmod.out:204:>> 0xAF54:32: R3 + 0x1:32 <- t_67567 (SAFE: 0x20:32 > 0x10:32)
-coreutils_O0_install.out:1515:>> 0x179BC:32: R3 + 0x1:32 <- t_186264 (SAFE: 0x20:32 > 0x10:32)
-coreutils_O0_mkdir.out:176:>> 0xA880:32: R3 + 0x1:32 <- t_36422 (SAFE: 0x20:32 > 0x10:32)
-coreutils_O0_mkfifo.out:109:>> 0x9B14:32: R3 + 0x1:32 <- t_25151 (SAFE: 0x20:32 > 0x10:32)
-coreutils_O0_mknod.out:125:>> 0xA2B0:32: R3 + 0x1:32 <- t_31175 (SAFE: 0x20:32 > 0x10:32)
-\end{verbatim}
-\normalsize
 
 
 % ======================================================================
@@ -646,14 +592,65 @@ Thus, we have the ability to store the output of our analysis without having to
 rerun the plugin. For example, we may be able to couple this data with
 pointer-analysis, and infer stack boundaries.
 
-\subsection{Malloc Plugin}
-% dominic TODO
+\subsection{Heap Check Plugin}
+\paragraph{}
+Of this output, our plugin identified a total of 4303 calls to preidentified
+memory allocation functions, namely \texttt{xmalloc}, \texttt{malloc}, \texttt{xrealloc},
+\texttt{realloc}, and \texttt{calloc}. Among these, the memory allocation size was
+identified for 369 of these callsites, whereas 3934 of these callsites had an
+unknown allocation size. Drilling down further, 804 of these unknown callsites
+involved left arithmetic shifts (multiplication) on a temporary variable, which
+our plugin would likely be able to identify given some additional development
+work.  Another 426 of these unknown callsites had an allocation size that was
+loaded from memory, which would be difficult resolve without pointer analysis
+and significant additional development effort. The remaining 2707 of these
+unknown callsites were due to the allocation size value being passed through
+more than one register, which our plugin is currently unable to resolve. By
+making the callsite identification routine recursive, it is likely that we
+would be able to resolve these unknown callsites further into one of the above
+subcases.  Below is a sample of the program output demonstrating these
+different results:
 
+\begin{verbatim}
+coreutils_O3_groups.out:182:>> 0xAFFC:32: xmalloc (UNKNOWN: R1)
+coreutils_O3_head.out:17:>> 0x9C8C:32: xrealloc (UNKNOWN: t_26405 << 0x2:32)
+coreutils_O3_head.out:52:>> 0x9730:32: xmalloc (UNKNOWN: mem[SP + 0x64:32, el]:u32)
+
+coreutils_O3_who.out:335:>> 0xD2D0:32: xmalloc (0x21:32)
+\end{verbatim}
+
+\paragraph{}
+Of the above callsites with memory allocation sizes that were statically
+identified, the memory operation offset was successfully determine and
+identified as safe for five of these, as shown below. None were identified as
+unsafe, and 301 were unchecked. It is likely that more of these unchecked uses
+would be resolvable given additional development effort, since the current
+implementation is only capable of resolving additive (and not negative,
+multiplicative, etc) offsets to the allocation site. Note that of the five
+memory operations identified as safe, all were in the \texttt{O0} version of the
+respective \texttt{coreutils} binary, indicating that higher optimization levels are
+generating more complex code that currently cannot be resolved.
+
+\small
+\begin{verbatim}
+coreutils_O0_chmod.out:194:>> 0xAF14:32: R3 + 0x0:32 <- t_67547 (UNCHECKED)
+coreutils_O0_chmod.out:196:>> 0xAF20:32: R3 + 0x1:32 <- t_67551 (UNCHECKED)
+coreutils_O0_chmod.out:198:>> 0xAF2C:32: R3 + 0x4:32 <- R2 (UNCHECKED)
+coreutils_O0_chmod.out:200:>> 0xAF38:32: R3 + 0x8:32 <- R2 (UNCHECKED)
+coreutils_O0_chmod.out:202:>> 0xAF44:32: R3 + 0xC:32 <- R2 (UNCHECKED)
+
+coreutils_O0_chmod.out:204:>> 0xAF54:32: R3 + 0x1:32 <- t_67567 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_install.out:1515:>> 0x179BC:32: R3 + 0x1:32 <- t_186264 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_mkdir.out:176:>> 0xA880:32: R3 + 0x1:32 <- t_36422 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_mkfifo.out:109:>> 0x9B14:32: R3 + 0x1:32 <- t_25151 (SAFE: 0x20:32 > 0x10:32)
+coreutils_O0_mknod.out:125:>> 0xA2B0:32: R3 + 0x1:32 <- t_31175 (SAFE: 0x20:32 > 0x10:32)
+\end{verbatim}
+\normalsize
 
 % =====================================================================
 \section{Surprises and Lessons Learned}
 \label{lessonslearned}
-%TODO tiffany, dominic
+%TODO tiffany
 
 There were a number of surprises and lessons learned throughout this project.
 
@@ -792,17 +789,17 @@ the Bitvector, reducing performance and flexibility of analysis.
 
 \paragraph{}
 In particular, our custom implementation defines a Bitvector record (datatype)
-composed of three subvalues: (1) infinite: a boolean value that determines
-whether the bitvector is of infinite size, (2) value: a boolean value that
-determines whether the bits of the bitvector are 0 or 1, and (3) indexes: a set
+composed of three subvalues: (1) \texttt{infinite}: a boolean value that determines
+whether the bitvector is of infinite size, (2) \texttt{value}: a boolean value that
+determines whether the bits of the bitvector are 0 or 1, and (3) \texttt{indexes}: a set
 of integers that identifies indexes of the bitvector that are set to value. As
 a result, this implementation allows for the empty and universal sets to be
-respectively identified by the following simple Bitvector values: \{infinite:
-true, value: false (0), indexes: \{\}\} and \{infinite: true, value: true (1),
-indexes: \{\}\}. Standard Bitvector operations, such as union, intersection, and
+respectively identified by the following simple Bitvector values: \texttt{\{infinite:
+true, value: false (0), indexes: \{\}\}} and \texttt{\{infinite: true, value: true (1),
+indexes: \{\}\}}. Standard Bitvector operations, such as union, intersection, and
 difference, are defined using these primitives. As an example, consider an
-arbitrary Bitvector a, and the following operations: empty - a = empty, a -
-empty = a, universal - a = not a, a - universal = empty. These operations are
+arbitrary Bitvector a, and the following operations: \texttt{empty - a = empty, a -
+empty = a, universal - a = not a, a - universal = empty}. These operations are
 straightforward, even for the relative complement of the universal set with the
 arbitrary Bitvector; this can be represented by simply toggling the value
 attribute from true to false or vice-versa.
