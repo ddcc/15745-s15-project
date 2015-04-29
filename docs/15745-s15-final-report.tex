@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
 For the \texttt{dst} variable on the stack, encoded as an
 \texttt{<address,statement>} pair, we have:
 
-\small
+\tiny
 \begin{verbatim}
     <(0x8490:32, 0)> R0 := R2
 \end{verbatim}
@@ -244,7 +244,7 @@ For the \texttt{dst} variable on the stack, encoded as an
 
 The plugin will determine all preceding instructions it is dependent on:
 
-\small
+\tiny
 \begin{verbatim}
     <(0x8444:32, 3)> SP := SP - 0x8:32
     <(0x8448:32, 2)> R11 := SP + 0x4:32
@@ -393,7 +393,7 @@ control flow. Nevertheless, the current plugin is capable of identifying memory
 safety vulnerabilities for the example program shown above, as shown below.
 
 
-\small
+\tiny
 \begin{verbatim}
 0x8330:32: .init_proc ([832c, 8333]) -> call_weak_fn ([83dc, 83f3])
 0x83C8:32: _start ([83a0, 83cb]) -> __libc_start_main ([837c, 8387])
@@ -543,7 +543,7 @@ toward developing more sophisticated analyses.
 \begin{figure}[h!]
       \caption{Malloc checking result in coreutils binaries.}
         \centering
-    \includegraphics[width=0.8\textwidth]{malloccheckplot}
+    \includegraphics[width=1.0\textwidth]{malloccheckplot}
 \end{figure}
 So far, we applied our checking on 128 binaries from \texttt{Coreutils}. The
 result showed that we found 15 places that \texttt{malloc} is not checked
@@ -601,7 +601,7 @@ pointer-analysis, and infer stack boundaries.
 
 \subsection{Heap Check Plugin}
 \paragraph{}
-Of this output, our plugin identified a total of 4303 calls to preidentified
+Of this output, our plugin identified a total of 4303 calls to pre-identified
 memory allocation functions, namely \texttt{xmalloc}, \texttt{malloc}, \texttt{xrealloc},
 \texttt{realloc}, and \texttt{calloc}. Among these, the memory allocation size was
 identified for 369 of these callsites, whereas 3934 of these callsites had an
@@ -619,7 +619,7 @@ subcases.  Below is a sample of the program output demonstrating these
 different results:
 
 
-\small
+\tiny
 \begin{verbatim}
 coreutils_O3_groups.out:182:>> 0xAFFC:32: xmalloc (UNKNOWN: R1)
 coreutils_O3_head.out:17:>> 0x9C8C:32: xrealloc (UNKNOWN: t_26405 << 0x2:32)
@@ -641,7 +641,7 @@ memory operations identified as safe, all were in the \texttt{O0} version of the
 respective \texttt{coreutils} binary, indicating that higher optimization levels are
 generating more complex code that currently cannot be resolved.
 
-\small
+\tiny
 \begin{verbatim}
 coreutils_O0_chmod.out:194:>> 0xAF14:32: R3 + 0x0:32 <- t_67547 (UNCHECKED)
 coreutils_O0_chmod.out:196:>> 0xAF20:32: R3 + 0x1:32 <- t_67551 (UNCHECKED)
@@ -792,6 +792,14 @@ research in our group.
 
 % =====================================================================
 \section{Distribution of Total Credit}
+Even three-way split.
+
+Breakdown:
+\begin{enumerate}
+ \item Dominic: Implementation of dataflow framework and heap check plugin.
+ \item Rijnard: Implementation of data dependencies and stack check plugin.
+ \item Tiffany: Implementation of \texttt{malloc} return value check plugin.
+\end{enumerate}
 
 \clearpage
 
